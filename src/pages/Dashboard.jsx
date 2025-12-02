@@ -259,7 +259,7 @@ export default function Dashboard() {
       <div className="card">
         {/* Header with Date Navigation */}
         <div className="p-4 border-b border-gray-100">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <h2 className="font-semibold text-gray-900 flex items-center gap-2">
               <Clock className="w-5 h-5 text-primary-500" />
               Appointments
@@ -273,9 +273,9 @@ export default function Dashboard() {
                   type="date"
                   value={selectedDate}
                   onChange={(e) => setSelectedDate(e.target.value)}
-                  className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="px-2 sm:px-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 w-[130px] sm:w-auto"
                 />
-                <span className="text-sm font-medium text-gray-700 min-w-[80px]">
+                <span className="hidden sm:inline text-sm font-medium text-gray-700 min-w-[80px]">
                   {formatDisplayDate(selectedDate)}
                 </span>
               </div>
@@ -284,22 +284,22 @@ export default function Dashboard() {
               </button>
               <button 
                 onClick={() => setSelectedDate(new Date().toISOString().split('T')[0])}
-                className="ml-2 px-3 py-1.5 text-xs font-medium text-primary-600 bg-primary-50 hover:bg-primary-100 rounded-lg transition-colors"
+                className="ml-1 sm:ml-2 px-2 sm:px-3 py-1.5 text-xs font-medium text-primary-600 bg-primary-50 hover:bg-primary-100 rounded-lg transition-colors"
               >
                 Today
               </button>
             </div>
           </div>
 
-          {/* Status Tabs */}
-          <div className="flex items-center gap-1 mt-4">
+          {/* Status Tabs - Scrollable on mobile */}
+          <div className="flex items-center gap-1 mt-4 overflow-x-auto pb-2 -mb-2 scrollbar-hide">
             {STATUS_TABS.map((tab) => {
               const count = tab.key === 'all' ? appointments.length : appointments.filter(a => a.status === tab.key).length;
               return (
                 <button
                   key={tab.key}
                   onClick={() => setActiveTab(tab.key)}
-                  className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
+                  className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors whitespace-nowrap flex-shrink-0 ${
                     activeTab === tab.key
                       ? 'bg-primary-600 text-white'
                       : 'text-gray-600 hover:bg-gray-100'
@@ -329,41 +329,46 @@ export default function Dashboard() {
                 const nextAction = getNextAction(apt.status);
                 const isUpdating = updatingId === apt._id;
                 return (
-                  <div key={apt._id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                  <div key={apt._id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors gap-3">
+                    {/* Patient Info */}
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-primary-100 rounded-full flex items-center justify-center">
+                      <div className="w-10 h-10 bg-primary-100 rounded-full flex items-center justify-center flex-shrink-0">
                         <span className="text-sm font-medium text-primary-600">
                           {getInitials(apt.patient?.name)}
                         </span>
                       </div>
-                      <div>
-                        <p className="font-medium text-gray-900">{apt.patient?.name || 'Unknown'}</p>
-                        <p className="text-xs text-gray-500">
+                      <div className="min-w-0">
+                        <p className="font-medium text-gray-900 truncate">{apt.patient?.name || 'Unknown'}</p>
+                        <p className="text-xs text-gray-500 truncate">
                           {apt.doctor?.name || 'No doctor'} • {formatTime(apt.timeSlot)}
                         </p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      {/* Billing Status */}
-                      {apt.billing?.hasBill ? (
-                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                          apt.billing.paymentStatus === 'paid' 
-                            ? 'bg-green-100 text-green-700' 
-                            : 'bg-red-100 text-red-700'
-                        }`}>
-                          {apt.billing.paymentStatus === 'paid' ? 'Paid' : 'Unpaid'}
+                    
+                    {/* Status & Actions */}
+                    <div className="flex items-center justify-between sm:justify-end gap-2 pl-13 sm:pl-0">
+                      {/* Status Badges */}
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {apt.billing?.hasBill ? (
+                          <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                            apt.billing.paymentStatus === 'paid' 
+                              ? 'bg-green-100 text-green-700' 
+                              : 'bg-red-100 text-red-700'
+                          }`}>
+                            {apt.billing.paymentStatus === 'paid' ? 'Paid' : 'Unpaid'}
+                          </span>
+                        ) : (
+                          <span className="px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-500">
+                            No Bill
+                          </span>
+                        )}
+                        <span className={`px-2 py-1 text-xs font-medium rounded-full capitalize ${getStatusColor(apt.status)}`}>
+                          {apt.status?.replace('-', ' ')}
                         </span>
-                      ) : (
-                        <span className="px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-500">
-                          No Bill
-                        </span>
-                      )}
-                      <span className={`px-2 py-1 text-xs font-medium rounded-full capitalize ${getStatusColor(apt.status)}`}>
-                        {apt.status?.replace('-', ' ')}
-                      </span>
+                      </div>
                       
                       {/* Action Buttons */}
-                      <div className="flex items-center gap-1 ml-2">
+                      <div className="flex items-center gap-1">
                         {nextAction && apt.status !== 'completed' && apt.status !== 'cancelled' && (
                           <button
                             onClick={() => handleStatusUpdate(apt._id, nextAction.action, apt.billing?.hasBill)}

@@ -151,13 +151,13 @@ export default function Inventory() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Inventory</h1>
           <p className="text-gray-500">Manage medicine stock</p>
         </div>
         <div className="flex gap-2">
-          <Link to="/inventory/stock" className="btn-primary">
+          <Link to="/inventory/stock" className="btn-primary w-full sm:w-auto justify-center">
             <Package className="w-4 h-4" />
             Manage Stock
           </Link>
@@ -203,22 +203,23 @@ export default function Inventory() {
 
       {/* Tabs */}
       <div className="card p-1">
-        <div className="flex gap-1">
+        <div className="flex gap-1 overflow-x-auto">
           {[
-            { id: 'medicines', label: 'All Medicines' },
-            { id: 'low-stock', label: `Low Stock (${stats.lowStockCount})` },
-            { id: 'expiring', label: `Expiring Soon (${stats.expiringCount})` },
+            { id: 'medicines', label: 'All Medicines', shortLabel: 'All' },
+            { id: 'low-stock', label: `Low Stock (${stats.lowStockCount})`, shortLabel: `Low (${stats.lowStockCount})` },
+            { id: 'expiring', label: `Expiring Soon (${stats.expiringCount})`, shortLabel: `Exp (${stats.expiringCount})` },
           ].map((t) => (
             <button
               key={t.id}
               onClick={() => setTab(t.id)}
-              className={`flex-1 px-4 py-2 rounded-lg font-medium transition-colors ${
+              className={`flex-1 px-3 sm:px-4 py-2 rounded-lg font-medium transition-colors whitespace-nowrap ${
                 tab === t.id
                   ? 'bg-primary-50 text-primary-700'
                   : 'text-gray-600 hover:bg-gray-50'
               }`}
             >
-              {t.label}
+              <span className="hidden sm:inline">{t.label}</span>
+              <span className="sm:hidden text-sm">{t.shortLabel}</span>
             </button>
           ))}
         </div>
@@ -254,7 +255,8 @@ export default function Inventory() {
             </p>
           </div>
         ) : (
-          <table className="table">
+          <div className="overflow-x-auto">
+          <table className="table min-w-[700px]">
             <thead>
               <tr>
                 <th>Medicine</th>
@@ -312,6 +314,7 @@ export default function Inventory() {
               })}
             </tbody>
           </table>
+          </div>
         )}
       </div>
     </div>

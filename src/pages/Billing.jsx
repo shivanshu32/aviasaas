@@ -133,12 +133,12 @@ export default function Billing() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Billing</h1>
           <p className="text-gray-500">Create and manage bills</p>
         </div>
-        <Link to={getNewBillPath()} className="btn-primary">
+        <Link to={getNewBillPath()} className="btn-primary w-full sm:w-auto justify-center">
           <Plus className="w-4 h-4" />
           New Bill
         </Link>
@@ -146,27 +146,28 @@ export default function Billing() {
 
       {/* Bill type tabs */}
       <div className="card p-1">
-        <div className="flex gap-1">
+        <div className="flex gap-1 overflow-x-auto">
           {billTypes.map((bt) => (
             <button
               key={bt.id}
               onClick={() => navigate(`/billing/${bt.id}`)}
-              className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-medium transition-colors ${
+              className={`flex-1 flex items-center justify-center gap-2 px-3 sm:px-4 py-3 rounded-lg font-medium transition-colors whitespace-nowrap ${
                 type === bt.id
                   ? 'bg-primary-50 text-primary-700'
                   : 'text-gray-600 hover:bg-gray-50'
               }`}
             >
               <bt.icon className="w-5 h-5" />
-              {bt.label}
+              <span className="hidden sm:inline">{bt.label}</span>
+              <span className="sm:hidden text-xs">{bt.id.toUpperCase()}</span>
             </button>
           ))}
         </div>
       </div>
 
       {/* Filters */}
-      <div className="flex items-center gap-4">
-        <div className="relative flex-1 max-w-md">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4">
+        <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <input
             type="text"
@@ -177,17 +178,17 @@ export default function Billing() {
           />
         </div>
         <div className="flex items-center gap-2">
-          <Calendar className="w-4 h-4 text-gray-400" />
+          <Calendar className="w-4 h-4 text-gray-400 hidden sm:block" />
           <input
             type="date"
             value={dateFilter}
             onChange={(e) => setDateFilter(e.target.value)}
-            className="input w-auto"
+            className="input w-full sm:w-auto"
           />
           {dateFilter && (
             <button
               onClick={() => setDateFilter('')}
-              className="text-sm text-gray-500 hover:text-gray-700"
+              className="text-sm text-gray-500 hover:text-gray-700 whitespace-nowrap"
             >
               Clear
             </button>
@@ -213,7 +214,8 @@ export default function Billing() {
             </Link>
           </div>
         ) : (
-          <table className="table">
+          <div className="overflow-x-auto">
+          <table className="table min-w-[700px]">
             <thead>
               <tr>
                 <th>Bill No</th>
@@ -275,14 +277,15 @@ export default function Billing() {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </div>
 
       {/* Summary */}
       {!loading && filteredBills.length > 0 && (
-        <div className="flex items-center justify-between text-sm text-gray-500">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-sm text-gray-500">
           <p>Showing {filteredBills.length} bill{filteredBills.length !== 1 ? 's' : ''}</p>
-          <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center gap-3 sm:gap-4">
             <p>
               Total: <span className="font-semibold text-gray-900">
                 ₹{filteredBills.reduce((sum, b) => sum + (b.grandTotal || 0), 0).toFixed(2)}

@@ -89,8 +89,8 @@ export function Pagination({
   const endItem = Math.min(currentPage * pageSize, totalItems);
 
   return (
-    <div className={`flex items-center justify-between px-4 py-3 ${className}`}>
-      <p className="text-sm text-gray-500">
+    <div className={`flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 ${className}`}>
+      <p className="text-sm text-gray-500 text-center sm:text-left">
         Showing <span className="font-medium">{startItem}</span> to{' '}
         <span className="font-medium">{endItem}</span> of{' '}
         <span className="font-medium">{totalItems}</span> results

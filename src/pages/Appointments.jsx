@@ -113,12 +113,12 @@ export default function Appointments() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Appointments</h1>
           <p className="text-gray-500">Schedule and manage appointments</p>
         </div>
-        <Link to="/appointments/book" className="btn-primary">
+        <Link to="/appointments/book" className="btn-primary w-full sm:w-auto justify-center">
           <Plus className="w-4 h-4" />
           Book Appointment
         </Link>
@@ -126,8 +126,8 @@ export default function Appointments() {
 
       {/* View toggle and date navigation */}
       <div className="card p-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
             <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
               <button
                 onClick={() => { setShowAllHistory(false); setView('list'); }}
@@ -158,7 +158,7 @@ export default function Appointments() {
               </button>
             </div>
             <select 
-              className="input w-48"
+              className="input w-full sm:w-48"
               value={selectedDoctor}
               onChange={(e) => setSelectedDoctor(e.target.value)}
             >
@@ -237,7 +237,8 @@ export default function Appointments() {
             <p className="text-gray-500">No appointments found for this date</p>
           </div>
         ) : (
-          <table className="table">
+          <div className="overflow-x-auto">
+        <table className="table min-w-[700px]">
             <thead>
               <tr>
                 {showAllHistory && <th>Date</th>}
@@ -299,6 +300,7 @@ export default function Appointments() {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </div>
     </div>

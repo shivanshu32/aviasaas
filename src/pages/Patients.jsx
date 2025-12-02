@@ -56,12 +56,12 @@ export default function Patients() {
   return (
     <div className="space-y-6">
       {/* Page header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Patients</h1>
           <p className="text-gray-500">Manage patient records</p>
         </div>
-        <Link to="/patients/add" className="btn-primary">
+        <Link to="/patients/add" className="btn-primary w-full sm:w-auto justify-center">
           <Plus className="w-4 h-4" />
           Add Patient
         </Link>
@@ -69,7 +69,7 @@ export default function Patients() {
 
       {/* Filters */}
       <div className="card p-4">
-        <div className="flex items-center gap-4">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4">
           <div className="flex-1 relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
@@ -80,7 +80,7 @@ export default function Patients() {
               className="input pl-10"
             />
           </div>
-          <button className="btn-secondary">
+          <button className="btn-secondary w-full sm:w-auto justify-center">
             <Filter className="w-4 h-4" />
             Filters
           </button>
@@ -102,7 +102,8 @@ export default function Patients() {
           </div>
         ) : (
           <>
-            <table className="table">
+            <div className="overflow-x-auto">
+            <table className="table min-w-[600px]">
               <thead>
                 <tr>
                   <th>Patient ID</th>
@@ -152,9 +153,10 @@ export default function Patients() {
                 ))}
               </tbody>
             </table>
+            </div>
 
             {/* Pagination */}
-            <div className="p-4 border-t border-gray-100 flex items-center justify-between">
+            <div className="p-4 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-3">
               <p className="text-sm text-gray-500">
                 Showing {((pagination.page - 1) * pagination.limit) + 1}-
                 {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total} patients
