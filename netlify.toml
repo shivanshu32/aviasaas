@@ -1,0 +1,124 @@
+# Netlify Configuration for Avia Clinic Management System
+
+[build]
+  # Build command for React frontend
+  command = "npm run build"
+  
+  # Directory to publish (Vite output)
+  publish = "dist"
+  
+  # Netlify Functions directory
+  functions = "netlify/functions"
+
+[build.environment]
+  # Node.js version
+  NODE_VERSION = "18"
+
+[dev]
+  # Framework to use
+  framework = "#custom"
+  # Command to start the dev server
+  command = "npm run dev"
+  # Port where Vite runs
+  targetPort = 3000
+  # Port for Netlify Dev
+  port = 8888
+  # Auto-launch browser
+  autoLaunch = false
+
+[functions]
+  # Use esbuild for faster builds
+  node_bundler = "esbuild"
+  
+  # External modules that shouldn't be bundled
+  external_node_modules = ["mongodb"]
+
+# API redirects - route /api/* to Netlify Functions
+[[redirects]]
+  from = "/api/patients/*"
+  to = "/.netlify/functions/patients-:splat"
+  status = 200
+
+[[redirects]]
+  from = "/api/doctors/*"
+  to = "/.netlify/functions/doctors-:splat"
+  status = 200
+
+[[redirects]]
+  from = "/api/appointments/*"
+  to = "/.netlify/functions/appointments-:splat"
+  status = 200
+
+[[redirects]]
+  from = "/api/prescriptions/*"
+  to = "/.netlify/functions/prescriptions-:splat"
+  status = 200
+
+[[redirects]]
+  from = "/api/billing/opd/*"
+  to = "/.netlify/functions/billing-opd-:splat"
+  status = 200
+
+[[redirects]]
+  from = "/api/billing/misc/*"
+  to = "/.netlify/functions/billing-misc-:splat"
+  status = 200
+
+[[redirects]]
+  from = "/api/billing/medicine/*"
+  to = "/.netlify/functions/billing-medicine-:splat"
+  status = 200
+
+[[redirects]]
+  from = "/api/medicine/*"
+  to = "/.netlify/functions/medicine-:splat"
+  status = 200
+
+[[redirects]]
+  from = "/api/clinic/*"
+  to = "/.netlify/functions/clinic-:splat"
+  status = 200
+
+[[redirects]]
+  from = "/api/services-*"
+  to = "/.netlify/functions/services-:splat"
+  status = 200
+
+[[redirects]]
+  from = "/api/users/*"
+  to = "/.netlify/functions/users-:splat"
+  status = 200
+
+[[redirects]]
+  from = "/api/auth/*"
+  to = "/.netlify/functions/auth-:splat"
+  status = 200
+
+# SPA fallback - serve index.html for all routes
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# Security headers
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    X-XSS-Protection = "1; mode=block"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+
+# Cache static assets
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# CORS headers for API
+[[headers]]
+  for = "/.netlify/functions/*"
+  [headers.values]
+    Access-Control-Allow-Origin = "*"
+    Access-Control-Allow-Headers = "Content-Type, Authorization"
+    Access-Control-Allow-Methods = "GET, POST, PUT, DELETE, OPTIONS"
