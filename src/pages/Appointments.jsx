@@ -76,14 +76,6 @@ export default function Appointments() {
     });
   };
 
-  const formatTime = (timeStr) => {
-    const [hours, minutes] = timeStr.split(':');
-    const hour = parseInt(hours);
-    const ampm = hour >= 12 ? 'PM' : 'AM';
-    const displayHour = hour % 12 || 12;
-    return `${displayHour}:${minutes} ${ampm}`;
-  };
-
   const getStatusColor = (status) => {
     switch (status) {
       case 'completed': return 'success';
@@ -242,7 +234,7 @@ export default function Appointments() {
             <thead>
               <tr>
                 {showAllHistory && <th>Date</th>}
-                <th>Time</th>
+                <th>Token</th>
                 <th>Patient</th>
                 <th>Doctor</th>
                 <th>Type</th>
@@ -258,7 +250,7 @@ export default function Appointments() {
                       {apt.appointmentDate ? new Date(apt.appointmentDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '-'}
                     </td>
                   )}
-                  <td className="font-medium">{apt.timeSlot?.start ? formatTime(apt.timeSlot.start) : '-'}</td>
+                  <td className="font-medium">#{apt.tokenNo || '-'}</td>
                   <td>
                     <div>
                       <p className="font-medium">{apt.patient?.name || 'N/A'}</p>

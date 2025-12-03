@@ -418,9 +418,7 @@ export default function ViewPatient() {
                           <td className="py-3 px-3">
                             <p className="font-medium">{formatDate(apt.appointmentDate)}</p>
                             <p className="text-gray-500 text-xs">
-                              {typeof apt.timeSlot === 'object' 
-                                ? `${apt.timeSlot?.start || ''} - ${apt.timeSlot?.end || ''}` 
-                                : apt.timeSlot || '-'}
+                              Token #{apt.tokenNo || '-'}
                             </p>
                           </td>
                           <td className="py-3 px-3">{apt.doctor?.name || '-'}</td>

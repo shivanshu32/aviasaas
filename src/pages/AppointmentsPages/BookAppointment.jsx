@@ -1,14 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Calendar, Clock, User, Search, Stethoscope, FileText } from 'lucide-react';
+import { ArrowLeft, Calendar, User, Search, Stethoscope, FileText } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Button, Input, Select, Textarea } from '../../components/ui';
 import { appointmentService, patientService, doctorService } from '../../services';
-
-const TIME_SLOTS = [
-  '09:00', '09:30', '10:00', '10:30', '11:00', '11:30', '12:00', '12:30',
-  '14:00', '14:30', '15:00', '15:30', '16:00', '16:30', '17:00', '17:30',
-];
 
 const APPOINTMENT_TYPES = [
   { value: 'new', label: 'New Consultation' },
@@ -31,7 +26,6 @@ export default function BookAppointment() {
     patientId: searchParams.get('patientId') || '',
     doctorId: '',
     appointmentDate: new Date().toISOString().split('T')[0],
-    timeSlot: '',
     type: 'new',
     symptoms: '',
   });
@@ -109,7 +103,6 @@ export default function BookAppointment() {
     if (!selectedPatient) newErrors.patientId = 'Please select a patient';
     if (!formData.doctorId) newErrors.doctorId = 'Please select a doctor';
     if (!formData.appointmentDate) newErrors.appointmentDate = 'Date is required';
-    if (!formData.timeSlot) newErrors.timeSlot = 'Time slot is required';
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -122,24 +115,10 @@ export default function BookAppointment() {
 
     setLoading(true);
     try {
-      // Parse the start time from the selected time slot
-      const startTime = formData.timeSlot;
-      const [hours, minutes] = startTime.split(':').map(Number);
-      
-      // Calculate end time (15 minutes after start)
-      const totalMinutes = hours * 60 + minutes + 15;
-      const endHour = Math.floor(totalMinutes / 60);
-      const endMinute = totalMinutes % 60;
-      const endTime = `${String(endHour).padStart(2, '0')}:${String(endMinute).padStart(2, '0')}`;
-
       const payload = {
         patientId: selectedPatient._id,
         doctorId: formData.doctorId,
         appointmentDate: formData.appointmentDate,
-        timeSlot: {
-          start: startTime,
-          end: endTime,
-        },
         type: formData.type,
         symptoms: formData.symptoms || null,
       };
@@ -159,11 +138,6 @@ export default function BookAppointment() {
   const doctorOptions = doctors.map((doc) => ({
     value: doc._id,
     label: `${doc.name} - ${doc.specialization}`,
-  }));
-
-  const timeSlotOptions = TIME_SLOTS.map((slot) => ({
-    value: slot,
-    label: slot,
   }));
 
   return (
@@ -307,35 +281,6 @@ export default function BookAppointment() {
               required
               min={new Date().toISOString().split('T')[0]}
             />
-            
-            {/* Time Slot Grid */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Time Slot <span className="text-red-500">*</span>
-              </label>
-              <div className="grid grid-cols-4 gap-1.5">
-                {TIME_SLOTS.map((slot) => (
-                  <button
-                    key={slot}
-                    type="button"
-                    onClick={() => {
-                      setFormData((prev) => ({ ...prev, timeSlot: slot }));
-                      setErrors((prev) => ({ ...prev, timeSlot: null }));
-                    }}
-                    className={`px-2 py-1.5 rounded text-xs font-medium transition-colors ${
-                      formData.timeSlot === slot
-                        ? 'bg-primary-600 text-white'
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                    }`}
-                  >
-                    {slot}
-                  </button>
-                ))}
-              </div>
-              {errors.timeSlot && (
-                <p className="mt-1 text-xs text-red-500">{errors.timeSlot}</p>
-              )}
-            </div>
           </div>
         </div>
 

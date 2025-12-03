@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { 
-  ArrowLeft, Calendar, Clock, User, Stethoscope, 
+  ArrowLeft, Calendar, User, Stethoscope, 
   UserCheck, XCircle, FileText, Play, CheckCircle, Receipt, Printer 
 } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -50,15 +50,6 @@ export default function ViewAppointment() {
     } finally {
       setUpdating(false);
     }
-  };
-
-  const formatTime = (timeStr) => {
-    if (!timeStr) return 'N/A';
-    const [hours, minutes] = timeStr.split(':');
-    const hour = parseInt(hours);
-    const ampm = hour >= 12 ? 'PM' : 'AM';
-    const displayHour = hour % 12 || 12;
-    return `${displayHour}:${minutes} ${ampm}`;
   };
 
   const formatDate = (dateStr) => {
@@ -136,15 +127,6 @@ export default function ViewAppointment() {
               <div>
                 <p className="text-sm text-gray-500">Date</p>
                 <p className="font-medium">{formatDate(appointment.appointmentDate)}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <Clock className="w-5 h-5 text-gray-400" />
-              <div>
-                <p className="text-sm text-gray-500">Time Slot</p>
-                <p className="font-medium">
-                  {formatTime(appointment.timeSlot?.start)} - {formatTime(appointment.timeSlot?.end)}
-                </p>
               </div>
             </div>
             <div>

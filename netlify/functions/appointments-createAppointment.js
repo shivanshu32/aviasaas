@@ -8,7 +8,6 @@
  *     patientId: string (required),
  *     doctorId: string (required),
  *     appointmentDate: string (required, ISO date),
- *     timeSlot: { start: 'HH:MM', end: 'HH:MM' } (required),
  *     type: 'new' | 'follow-up',
  *     symptoms?: string
  *   }
@@ -19,7 +18,7 @@
 
 import { ObjectId } from 'mongodb';
 import { getDb, COLLECTIONS } from './utils/db.js';
-import { created, badRequest, notFound, conflict } from './utils/response.js';
+import { created, badRequest, notFound } from './utils/response.js';
 import { withErrorHandler } from './utils/errorHandler.js';
 import { validateCreateAppointment } from '../../shared/validators/appointment.validator.js';
 import { generateUniqueId } from '../../shared/utils/idGenerator.js';
@@ -64,18 +63,6 @@ async function createAppointment(event) {
   const appointmentDate = new Date(data.appointmentDate);
   appointmentDate.setHours(0, 0, 0, 0);
 
-  // Check for slot conflict
-  const slotConflict = await db.collection(COLLECTIONS.APPOINTMENTS).findOne({
-    doctorId: doctor._id,
-    appointmentDate,
-    'timeSlot.start': data.timeSlot.start,
-    status: { $nin: ['cancelled', 'no-show'] },
-  });
-
-  if (slotConflict) {
-    return conflict('This time slot is already booked');
-  }
-
   // Get today's token number
   const todayStart = new Date(appointmentDate);
   const todayEnd = new Date(appointmentDate);
@@ -108,9 +95,8 @@ async function createAppointment(event) {
     patientId: patient._id,
     doctorId: doctor._id,
     appointmentDate,
-    timeSlot: data.timeSlot,
     tokenNo,
-    type: data.type || 'consultation',
+    type: data.type || 'new',
     status: APPOINTMENT_STATUS.SCHEDULED,
     symptoms: data.symptoms || null,
     vitals: null,

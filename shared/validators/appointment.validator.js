@@ -15,12 +15,6 @@ const vitalsSchema = z.object({
   spo2: z.number().int().min(0).max(100).optional(),
 }).optional();
 
-// Time slot schema
-const timeSlotSchema = z.object({
-  start: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, 'Invalid time format (HH:MM)'),
-  end: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, 'Invalid time format (HH:MM)'),
-});
-
 /**
  * Schema for creating an appointment
  */
@@ -30,7 +24,6 @@ export const createAppointmentSchema = z.object({
   appointmentDate: z.string().refine((val) => !isNaN(Date.parse(val)), {
     message: 'Invalid date format',
   }),
-  timeSlot: timeSlotSchema,
   type: z.enum(APPOINTMENT_TYPE_OPTIONS).default('new'),
   symptoms: z.string().max(1000).nullable().optional(),
 });

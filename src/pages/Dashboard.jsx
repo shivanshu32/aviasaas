@@ -120,18 +120,6 @@ export default function Dashboard() {
     }).format(amount);
   };
 
-  const formatTime = (timeSlot) => {
-    if (!timeSlot || typeof timeSlot !== 'string') return '-';
-    const parts = timeSlot.split(':');
-    if (parts.length < 2) return timeSlot;
-    const [hours, minutes] = parts;
-    const hour = parseInt(hours);
-    if (isNaN(hour)) return timeSlot;
-    const ampm = hour >= 12 ? 'PM' : 'AM';
-    const hour12 = hour % 12 || 12;
-    return `${hour12}:${minutes} ${ampm}`;
-  };
-
   const getInitials = (name) => {
     if (!name) return '??';
     return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
@@ -340,7 +328,7 @@ export default function Dashboard() {
                       <div className="min-w-0">
                         <p className="font-medium text-gray-900 truncate">{apt.patient?.name || 'Unknown'}</p>
                         <p className="text-xs text-gray-500 truncate">
-                          {apt.doctor?.name || 'No doctor'} • {formatTime(apt.timeSlot)}
+                          {apt.doctor?.name || 'No doctor'} • Token #{apt.tokenNo || '-'}
                         </p>
                       </div>
                     </div>
