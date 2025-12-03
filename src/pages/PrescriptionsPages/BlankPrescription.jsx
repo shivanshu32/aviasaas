@@ -184,11 +184,11 @@ export default function BlankPrescription() {
                       {[settings.address.line1, settings.address.line2, settings.address.city, settings.address.state, settings.address.pincode].filter(Boolean).join(', ')}
                     </p>
                   )}
-                  {settings?.timings && <p className="footer-timing">Timings: {settings.timings}</p>}
+                  <p className="footer-email">Email: aviawellnessclinic@gmail.com</p>
                 </div>
                 <div className="footer-right">
                   <p className="footer-cta">For Appointments Call</p>
-                  <p className="footer-phone">011-79611644, 9990270028</p>
+                  <p className="footer-phone">8287012447, 9990270028</p>
                 </div>
               </div>
             </footer>
@@ -201,7 +201,7 @@ export default function BlankPrescription() {
         /* ========== PAGE CONTAINER ========== */
         .blank-prescription-page {
           width: 210mm;
-          min-height: 297mm;
+          height: 297mm;
           padding: 8mm 0;
           margin: 0 auto;
           background: #ffffff;
@@ -354,7 +354,7 @@ export default function BlankPrescription() {
         /* ========== FOOTER ========== */
         .prescription-footer {
           margin-top: auto;
-          padding: 0 10mm 12px;
+          padding: 0 10mm 0;
         }
 
         .footer-line {
@@ -390,7 +390,7 @@ export default function BlankPrescription() {
           max-width: 280px;
         }
 
-        .footer-timing {
+        .footer-email {
           color: #374151;
           font-weight: 500;
         }
@@ -422,7 +422,7 @@ export default function BlankPrescription() {
         @media print {
           @page {
             size: A4;
-            margin: 8mm 5mm;
+            margin: 10mm 5mm 10mm 5mm;
           }
 
           body {
@@ -432,8 +432,11 @@ export default function BlankPrescription() {
 
           .blank-prescription-page {
             width: 100%;
-            min-height: auto;
+            height: 100%;
+            min-height: 100vh;
             padding: 0;
+            display: flex;
+            flex-direction: column;
           }
 
           .blank-prescription-header {
@@ -446,11 +449,13 @@ export default function BlankPrescription() {
           }
 
           .prescription-body {
-            min-height: 195mm;
+            flex: 1;
+            min-height: 0;
           }
 
           .prescription-footer {
-            padding-bottom: 0;
+            margin-top: auto;
+            padding: 0 10mm 0;
           }
 
           .no-print {
