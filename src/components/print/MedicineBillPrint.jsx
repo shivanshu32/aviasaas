@@ -77,6 +77,12 @@ const MedicineBillPrint = forwardRef(({ bill }, ref) => {
           <span className="patient-value">{patient.patientId || '-'}</span>
         </div>
         <div className="patient-row">
+          <span className="patient-label">Age/Gender:</span>
+          <span className="patient-value">
+            {patient.age ? `${patient.age} yrs` : '-'} / {patient.gender || '-'}
+          </span>
+        </div>
+        <div className="patient-row">
           <span className="patient-label">Phone:</span>
           <span className="patient-value">{patient.phone || bill.patientPhone || '-'}</span>
         </div>

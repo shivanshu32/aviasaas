@@ -279,6 +279,8 @@ async function generateMedicineBill(event) {
       patientId: patient.patientId,
       name: patient.name,
       phone: patient.phone,
+      age: patient.age,
+      gender: patient.gender,
     } : null,
     doctor: doctor ? {
       _id: doctor._id,

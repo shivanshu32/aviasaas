@@ -163,6 +163,8 @@ async function generateMiscBill(event) {
       patientId: patient.patientId,
       name: patient.name,
       phone: patient.phone,
+      age: patient.age,
+      gender: patient.gender,
     } : null,
     referringDoctor: referringDoctor ? {
       _id: referringDoctor._id,

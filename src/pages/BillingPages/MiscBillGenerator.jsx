@@ -278,122 +278,139 @@ export default function MiscBillGenerator() {
         </div>
       </div>
 
-      {/* Form - 3 Column Layout */}
-      <form onSubmit={handleSubmit} className="flex-1 grid grid-cols-3 gap-4 items-start">
-        {/* Column 1: Patient Info */}
-        <div className="bg-white rounded-xl border border-gray-200 p-4 h-fit">
-          <div className="flex items-center gap-2 mb-4">
-            <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-              <User className="w-4 h-4 text-blue-600" />
-            </div>
-            <h2 className="font-semibold text-gray-900">Patient Info</h2>
-          </div>
-          
-          <div className="space-y-3">
-            {selectedPatient ? (
-              <div className="p-2 bg-green-50 border border-green-200 rounded-lg">
-                <p className="font-medium text-gray-900 text-sm">{selectedPatient.name}</p>
-                <p className="text-xs text-gray-600">{selectedPatient.patientId} • {selectedPatient.phone}</p>
-                {!patientIdParam && (
-                  <button type="button" onClick={() => { setSelectedPatient(null); setPatientSearch(''); setFormData(prev => ({ ...prev, patientName: '', patientPhone: '' })); }} className="text-xs text-red-600 mt-1">Change</button>
-                )}
+      {/* Form - Optimized Layout */}
+      <form onSubmit={handleSubmit} className="flex-1 flex flex-col gap-4 min-h-0">
+        {/* Row 1: Patient Info + Summary side by side */}
+        <div className="grid grid-cols-2 gap-4">
+          {/* Patient Info */}
+          <div className="bg-white rounded-xl border border-gray-200 p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-7 h-7 bg-blue-100 rounded-lg flex items-center justify-center">
+                <User className="w-3.5 h-3.5 text-blue-600" />
               </div>
-            ) : (
-              <>
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                  <input type="text" value={patientSearch} onChange={(e) => { setPatientSearch(e.target.value); searchPatients(e.target.value); }} placeholder="Search patient..." className="w-full pl-10 pr-4 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500" />
-                  {showPatientDropdown && patients.length > 0 && (
-                    <div className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-lg max-h-32 overflow-y-auto">
-                      {patients.map((patient) => (
-                        <button key={patient._id} type="button" onClick={() => handlePatientSelect(patient)} className="w-full px-3 py-2 text-left hover:bg-gray-50 text-sm">{patient.name} - {patient.phone}</button>
-                      ))}
+              <h2 className="font-semibold text-gray-900 text-sm">Patient Info</h2>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-3">
+              {selectedPatient ? (
+                <div className="col-span-2 p-2 bg-green-50 border border-green-200 rounded-lg">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <p className="font-medium text-gray-900 text-sm">{selectedPatient.name}</p>
+                      <p className="text-xs text-gray-600">{selectedPatient.patientId} • {selectedPatient.phone}</p>
                     </div>
-                  )}
+                    {!patientIdParam && (
+                      <button type="button" onClick={() => { setSelectedPatient(null); setPatientSearch(''); setFormData(prev => ({ ...prev, patientName: '', patientPhone: '' })); }} className="text-xs text-red-600">Change</button>
+                    )}
+                  </div>
                 </div>
-                <Input label="Patient Name" name="patientName" value={formData.patientName} onChange={handleChange} required placeholder="Name" />
-                <Input label="Phone" name="patientPhone" value={formData.patientPhone} onChange={handleChange} placeholder="Phone" />
-              </>
-            )}
-            <Select label="Referred By" name="referredBy" value={formData.referredBy} onChange={handleChange} options={doctorOptions} placeholder="Select doctor" />
-            <Select label="Category" name="category" value={formData.category} onChange={handleChange} options={BILL_CATEGORIES} />
-            <Select label="Payment Mode" name="paymentMode" value={formData.paymentMode} onChange={handleChange} options={PAYMENT_MODES} />
+              ) : (
+                <>
+                  <div className="col-span-2 relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <input type="text" value={patientSearch} onChange={(e) => { setPatientSearch(e.target.value); searchPatients(e.target.value); }} placeholder="Search existing patient..." className="w-full pl-10 pr-4 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500" />
+                    {showPatientDropdown && patients.length > 0 && (
+                      <div className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-lg max-h-32 overflow-y-auto">
+                        {patients.map((patient) => (
+                          <button key={patient._id} type="button" onClick={() => handlePatientSelect(patient)} className="w-full px-3 py-2 text-left hover:bg-gray-50 text-sm">{patient.name} - {patient.phone}</button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <Input label="Patient Name" name="patientName" value={formData.patientName} onChange={handleChange} required placeholder="Name" />
+                  <Input label="Phone" name="patientPhone" value={formData.patientPhone} onChange={handleChange} placeholder="Phone" />
+                </>
+              )}
+              <Select label="Consultant" name="referredBy" value={formData.referredBy} onChange={handleChange} options={doctorOptions} placeholder="Select doctor" />
+              <Select label="Category" name="category" value={formData.category} onChange={handleChange} options={BILL_CATEGORIES} />
+            </div>
           </div>
-        </div>
 
-        {/* Column 2: Bill Items */}
-        <div className="bg-white rounded-xl border border-gray-200 p-4">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
-                <FlaskConical className="w-4 h-4 text-green-600" />
+          {/* Summary */}
+          <div className="bg-white rounded-xl border border-gray-200 p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-7 h-7 bg-purple-100 rounded-lg flex items-center justify-center">
+                <CreditCard className="w-3.5 h-3.5 text-purple-600" />
               </div>
-              <h2 className="font-semibold text-gray-900">Bill Items</h2>
-            </div>
-            <div className="flex gap-1">
-              <button type="button" onClick={() => setShowTestPicker(true)} className="text-xs text-primary-600 hover:text-primary-700 font-medium px-2 py-1 bg-primary-50 rounded">Quick Add</button>
-              <button type="button" onClick={() => addItem()} className="text-xs text-primary-600 hover:text-primary-700 font-medium flex items-center gap-1 px-2 py-1 bg-primary-50 rounded"><Plus className="w-3 h-3" /></button>
-            </div>
-          </div>
-          
-          <div className="space-y-2 max-h-64 overflow-y-auto">
-            {formData.items.length === 0 ? (
-              <div className="text-center py-6 text-gray-400 text-sm">
-                <p>No items added</p>
-                <button type="button" onClick={() => setShowTestPicker(true)} className="text-primary-600 mt-1">Add from common tests</button>
-              </div>
-            ) : (
-              formData.items.map((item, index) => (
-                <div key={index} className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
-                  <input type="text" placeholder="Description" value={item.description} onChange={(e) => handleItemChange(index, 'description', e.target.value)} className="flex-1 px-2 py-1 text-sm border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-primary-500" />
-                  <input type="number" placeholder="Qty" value={item.quantity} onChange={(e) => handleItemChange(index, 'quantity', e.target.value)} className="w-12 px-2 py-1 text-sm border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-primary-500" min="1" />
-                  <input type="number" placeholder="Rate" value={item.rate} onChange={(e) => handleItemChange(index, 'rate', e.target.value)} className="w-16 px-2 py-1 text-sm border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-primary-500" min="0" />
-                  <span className="w-14 text-right text-sm font-medium">₹{((Number(item.quantity) || 0) * (Number(item.rate) || 0)).toFixed(0)}</span>
-                  <button type="button" onClick={() => removeItem(index)} className="text-red-500 hover:text-red-700"><Trash2 className="w-4 h-4" /></button>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-
-        {/* Column 3: Summary */}
-        <div className="bg-white rounded-xl border border-gray-200 p-4 h-fit">
-          <div className="flex items-center gap-2 mb-4">
-            <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
-              <CreditCard className="w-4 h-4 text-purple-600" />
-            </div>
-            <h2 className="font-semibold text-gray-900">Summary</h2>
-          </div>
-          
-          <div className="space-y-3">
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-600">Subtotal</span>
-              <span className="font-medium">₹{subtotal}</span>
+              <h2 className="font-semibold text-gray-900 text-sm">Payment & Summary</h2>
             </div>
             
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-gray-600">Discount</span>
-              <select value={formData.discountType} onChange={handleChange} name="discountType" className="px-2 py-1 text-xs border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-primary-500">
-                <option value="fixed">₹</option>
-                <option value="percentage">%</option>
-              </select>
-              <input type="number" value={formData.discountValue} onChange={handleChange} name="discountValue" className="w-16 px-2 py-1 text-sm border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-primary-500" min="0" />
-            </div>
-            
-            <div className="flex justify-between text-lg font-bold pt-3 border-t border-gray-200">
-              <span>Grand Total</span>
-              <span className="text-primary-600">₹{grandTotal}</span>
-            </div>
-
-            {formData.paymentMode === 'mixed' && (
-              <div className="pt-3 border-t border-gray-200 space-y-2">
-                <p className="text-xs font-medium text-gray-700">Split Payment</p>
-                <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-2 gap-3">
+              <Select label="Payment Mode" name="paymentMode" value={formData.paymentMode} onChange={handleChange} options={PAYMENT_MODES} />
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Discount</label>
+                <div className="flex gap-1">
+                  <select value={formData.discountType} onChange={handleChange} name="discountType" className="px-2 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500">
+                    <option value="percentage">%</option>
+                    <option value="fixed">₹</option>
+                  </select>
+                  <input type="number" value={formData.discountValue} onChange={handleChange} name="discountValue" className="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500" min="0" placeholder="0" />
+                </div>
+              </div>
+              
+              {formData.paymentMode === 'mixed' && (
+                <>
                   <Input label="Cash" name="paymentDetails.cash" type="number" value={formData.paymentDetails.cash} onChange={handleChange} min="0" />
                   <Input label="Card" name="paymentDetails.card" type="number" value={formData.paymentDetails.card} onChange={handleChange} min="0" />
                   <Input label="UPI" name="paymentDetails.upi" type="number" value={formData.paymentDetails.upi} onChange={handleChange} min="0" />
+                </>
+              )}
+              
+              <div className="col-span-2 flex items-center justify-between pt-3 border-t border-gray-200">
+                <div className="text-sm text-gray-600">
+                  <span>Subtotal: ₹{subtotal}</span>
+                  {discountAmount > 0 && <span className="ml-3 text-green-600">Discount: -₹{discountAmount.toFixed(0)}</span>}
                 </div>
+                <div className="text-xl font-bold text-primary-600">₹{grandTotal}</div>
               </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Row 2: Bill Items - Full Width */}
+        <div className="bg-white rounded-xl border border-gray-200 p-4 flex-1 flex flex-col min-h-0">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 bg-green-100 rounded-lg flex items-center justify-center">
+                <FlaskConical className="w-3.5 h-3.5 text-green-600" />
+              </div>
+              <h2 className="font-semibold text-gray-900 text-sm">Bill Items</h2>
+              <span className="text-xs text-gray-500">({formData.items.length} items)</span>
+            </div>
+            <div className="flex gap-2">
+              <button type="button" onClick={() => setShowTestPicker(true)} className="text-sm text-primary-600 hover:text-primary-700 font-medium px-3 py-1.5 bg-primary-50 hover:bg-primary-100 rounded-lg transition-colors">Quick Add</button>
+              <button type="button" onClick={() => addItem()} className="text-sm text-primary-600 hover:text-primary-700 font-medium flex items-center gap-1 px-3 py-1.5 bg-primary-50 hover:bg-primary-100 rounded-lg transition-colors"><Plus className="w-4 h-4" /> Manual</button>
+            </div>
+          </div>
+          
+          {/* Items Header */}
+          {formData.items.length > 0 && (
+            <div className="grid grid-cols-12 gap-2 px-3 py-2 bg-gray-100 rounded-lg text-xs font-medium text-gray-600 mb-2">
+              <div className="col-span-6">Description</div>
+              <div className="col-span-2 text-center">Qty</div>
+              <div className="col-span-2 text-center">Rate (₹)</div>
+              <div className="col-span-1 text-right">Amount</div>
+              <div className="col-span-1"></div>
+            </div>
+          )}
+          
+          <div className="flex-1 overflow-y-auto space-y-2">
+            {formData.items.length === 0 ? (
+              <div className="text-center py-8 text-gray-400">
+                <FlaskConical className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                <p className="font-medium">No items added</p>
+                <p className="text-sm mt-1">Click "Quick Add" to select from services or "Manual" to add custom item</p>
+              </div>
+            ) : (
+              formData.items.map((item, index) => (
+                <div key={index} className="grid grid-cols-12 gap-2 items-center p-2 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                  <input type="text" placeholder="Description" value={item.description} onChange={(e) => handleItemChange(index, 'description', e.target.value)} className="col-span-6 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500" />
+                  <input type="number" placeholder="Qty" value={item.quantity} onChange={(e) => handleItemChange(index, 'quantity', e.target.value)} className="col-span-2 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-center" min="1" />
+                  <input type="number" placeholder="Rate" value={item.rate} onChange={(e) => handleItemChange(index, 'rate', e.target.value)} className="col-span-2 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-center" min="0" />
+                  <span className="col-span-1 text-right text-sm font-semibold text-gray-900">₹{((Number(item.quantity) || 0) * (Number(item.rate) || 0)).toFixed(0)}</span>
+                  <button type="button" onClick={() => removeItem(index)} className="col-span-1 flex justify-center text-red-500 hover:text-red-700 hover:bg-red-50 p-2 rounded-lg transition-colors"><Trash2 className="w-4 h-4" /></button>
+                </div>
+              ))
             )}
           </div>
         </div>

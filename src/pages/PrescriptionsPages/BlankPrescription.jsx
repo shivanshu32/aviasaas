@@ -422,7 +422,7 @@ export default function BlankPrescription() {
         @media print {
           @page {
             size: A4;
-            margin: 10mm 5mm 10mm 5mm;
+            margin: 8mm 5mm 12mm 5mm;
           }
 
           body {
@@ -455,7 +455,7 @@ export default function BlankPrescription() {
 
           .prescription-footer {
             margin-top: auto;
-            padding: 0 10mm 0;
+            padding: 0 10mm 2mm;
           }
 
           .no-print {
