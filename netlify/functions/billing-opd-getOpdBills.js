@@ -7,6 +7,7 @@
  * Query Parameters:
  *   - patientId: Filter by patient
  *   - doctorId: Filter by doctor
+ *   - appointmentId: Filter by appointment
  *   - dateFrom: Start date (ISO)
  *   - dateTo: End date (ISO)
  *   - paymentStatus: paid | pending | partial
@@ -25,6 +26,7 @@ async function getOpdBills(event) {
   const {
     patientId,
     doctorId,
+    appointmentId,
     dateFrom,
     dateTo,
     paymentStatus,
@@ -51,6 +53,13 @@ async function getOpdBills(event) {
     filter.doctorId = ObjectId.isValid(doctorId)
       ? new ObjectId(doctorId)
       : doctorId;
+  }
+
+  // Appointment filter
+  if (appointmentId) {
+    filter.appointmentId = ObjectId.isValid(appointmentId)
+      ? new ObjectId(appointmentId)
+      : appointmentId;
   }
 
   // Date range filter

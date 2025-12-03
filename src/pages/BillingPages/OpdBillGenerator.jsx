@@ -34,6 +34,7 @@ export default function OpdBillGenerator() {
   const [showPatientDropdown, setShowPatientDropdown] = useState(false);
   const [generatedBill, setGeneratedBill] = useState(null);
   const [showPrintView, setShowPrintView] = useState(false);
+  const [existingBill, setExistingBill] = useState(null);
 
   const appointmentId = searchParams.get('appointmentId');
 
@@ -76,6 +77,22 @@ export default function OpdBillGenerator() {
       const response = await appointmentService.getById(id);
       const apt = response.appointment;
       setAppointment(apt);
+      
+      // Check if bill already exists for this appointment
+      try {
+        const billsResponse = await billingService.opd.getAll({ appointmentId: apt._id });
+        if (billsResponse.bills && billsResponse.bills.length > 0) {
+          // Bill already exists - fetch full bill details for printing
+          const billResponse = await billingService.opd.getById(billsResponse.bills[0]._id);
+          setExistingBill(billResponse.bill);
+          setGeneratedBill(billResponse.bill);
+          setShowPrintView(true);
+          return; // Don't continue with form setup
+        }
+      } catch (billError) {
+        // No existing bill, continue with form
+        console.log('No existing bill found');
+      }
       
       // Auto-fill patient
       if (apt.patient) {
@@ -243,7 +260,7 @@ export default function OpdBillGenerator() {
 
   const handlePrint = useReactToPrint({
     content: () => printRef.current,
-    documentTitle: `OPD-Bill-${generatedBill?.billNo}`,
+    documentTitle: `OPD-Bill-${generatedBill?.billNo || existingBill?.billNo}`,
   });
 
   const doctorOptions = doctors.map((doc) => ({
@@ -263,13 +280,21 @@ export default function OpdBillGenerator() {
     return (
       <div>
         <div className="flex items-center justify-between mb-6 no-print">
-          <button 
-            onClick={() => setShowPrintView(false)} 
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-            title="Back to Form"
-          >
-            <ArrowLeft className="w-6 h-6 text-gray-600" />
-          </button>
+          <div className="flex items-center gap-4">
+            <button 
+              onClick={() => existingBill ? navigate(-1) : setShowPrintView(false)} 
+              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              title="Go Back"
+            >
+              <ArrowLeft className="w-6 h-6 text-gray-600" />
+            </button>
+            {existingBill && (
+              <div>
+                <h1 className="text-xl font-bold text-gray-900">Bill Already Generated</h1>
+                <p className="text-sm text-gray-500">Bill No: {existingBill.billNo}</p>
+              </div>
+            )}
+          </div>
           <div className="flex gap-2">
             <Button variant="secondary" onClick={() => navigate('/billing/opd')}>
               Done
@@ -279,6 +304,13 @@ export default function OpdBillGenerator() {
             </Button>
           </div>
         </div>
+        {existingBill && (
+          <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg no-print">
+            <p className="text-sm text-amber-800">
+              <strong>Note:</strong> A bill has already been generated for this appointment. You can print or download the existing bill below.
+            </p>
+          </div>
+        )}
         <div ref={printRef}>
           <BillPrintView bill={generatedBill} type="opd" />
         </div>

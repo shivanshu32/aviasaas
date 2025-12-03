@@ -68,6 +68,16 @@ async function generateOpdBill(event) {
       ? { _id: new ObjectId(data.appointmentId) }
       : { appointmentId: data.appointmentId };
     appointment = await db.collection(COLLECTIONS.APPOINTMENTS).findOne(appointmentQuery);
+    
+    // Check if bill already exists for this appointment
+    if (appointment) {
+      const existingBill = await db.collection(COLLECTIONS.OPD_BILLS).findOne({
+        appointmentId: appointment._id
+      });
+      if (existingBill) {
+        return badRequest(`Bill already generated for this appointment (Bill No: ${existingBill.billNo})`);
+      }
+    }
   }
 
   // Calculate bill amounts
