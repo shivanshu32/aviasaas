@@ -10,6 +10,7 @@ import {
   Stethoscope,
   FlaskConical,
   Shield,
+  FileText,
 } from 'lucide-react';
 import { useClinic } from '../../context/ClinicContext';
 
@@ -21,6 +22,7 @@ const navItems = [
   { path: '/billing', icon: Receipt, label: 'Billing' },
   { path: '/inventory', icon: Package, label: 'Pharmacy' },
   { path: '/services', icon: FlaskConical, label: 'Service Charges' },
+  { path: '/letterhead', icon: FileText, label: 'Letterhead' },
   { path: '/users', icon: Shield, label: 'User Management' },
   { path: '/settings', icon: Settings, label: 'Settings', exact: true },
 ];

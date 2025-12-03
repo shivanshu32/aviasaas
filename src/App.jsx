@@ -19,7 +19,7 @@ import NotFound from './pages/NotFound';
 import { AddPatient, ViewPatient, EditPatient } from './pages/PatientsPages';
 import { AddDoctor, EditDoctor } from './pages/DoctorsPages';
 import { BookAppointment, ViewAppointment } from './pages/AppointmentsPages';
-import { PrescriptionGenerator, BlankPrescription } from './pages/PrescriptionsPages';
+import { PrescriptionGenerator, BlankPrescription, Letterhead } from './pages/PrescriptionsPages';
 import { OpdBillGenerator, MiscBillGenerator, MedicineBilling, ViewBill } from './pages/BillingPages';
 import { MedicineStockManagement } from './pages/InventoryPages';
 
@@ -57,6 +57,7 @@ function App() {
         {/* Prescriptions */}
         <Route path="prescriptions/generate" element={<PrescriptionGenerator />} />
         <Route path="prescriptions/blank" element={<BlankPrescription />} />
+        <Route path="letterhead" element={<Letterhead />} />
         
         {/* Billing */}
         <Route path="billing" element={<Billing />} />

@@ -1,15 +1,13 @@
 import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Eye, EyeOff, Stethoscope, LogIn } from 'lucide-react';
+import { Eye, EyeOff, LogIn } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
-import { useClinic } from '../context/ClinicContext';
 
 export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
   const { login } = useAuth();
-  const { settings } = useClinic();
   
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -51,19 +49,13 @@ export default function Login() {
       <div className="w-full max-w-md">
         {/* Logo/Header */}
         <div className="text-center mb-8">
-          {settings?.logo ? (
-            <img 
-              src={settings.logo} 
-              alt={settings.clinicName || 'Clinic'} 
-              className="h-16 mx-auto mb-4"
-            />
-          ) : (
-            <div className="w-16 h-16 bg-primary-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
-              <Stethoscope className="w-8 h-8 text-white" />
-            </div>
-          )}
+          <img 
+            src="/logo.png" 
+            alt="Avia Wellness Clinic" 
+            className="h-16 mx-auto mb-4"
+          />
           <h1 className="text-2xl font-bold text-gray-900">
-            {settings?.clinicName || 'Avia Clinic'}
+            Avia Wellness Clinic
           </h1>
           <p className="text-gray-500 mt-1">Sign in to your account</p>
         </div>
@@ -138,7 +130,7 @@ export default function Login() {
 
         {/* Footer */}
         <p className="text-center text-sm text-gray-400 mt-6">
-          © {new Date().getFullYear()} {settings?.clinicName || 'Avia Clinic'}. All rights reserved.
+          © {new Date().getFullYear()} Avia Wellness Clinic. All rights reserved.
         </p>
       </div>
     </div>
