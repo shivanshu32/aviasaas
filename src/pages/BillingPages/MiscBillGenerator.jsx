@@ -38,6 +38,7 @@ export default function MiscBillGenerator() {
   const [generatedBill, setGeneratedBill] = useState(null);
   const [showPrintView, setShowPrintView] = useState(false);
   const [showTestPicker, setShowTestPicker] = useState(false);
+  const [serviceSearch, setServiceSearch] = useState('');
 
   const [formData, setFormData] = useState({
     patientName: '',
@@ -46,7 +47,7 @@ export default function MiscBillGenerator() {
     referredBy: '',
     category: 'laboratory',
     items: [],
-    discountType: 'fixed',
+    discountType: 'percentage',
     discountValue: 0,
     paymentMode: 'cash',
     paymentDetails: { cash: 0, card: 0, upi: 0, upiRef: '' },
@@ -401,38 +402,80 @@ export default function MiscBillGenerator() {
       {/* Test Picker Modal */}
       {showTestPicker && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-white rounded-xl shadow-xl max-w-lg w-full max-h-[70vh] overflow-hidden">
-            <div className="p-4 border-b flex justify-between items-center">
-              <h3 className="font-semibold">Quick Add - {BILL_CATEGORIES.find(c => c.value === formData.category)?.label}</h3>
-              <button onClick={() => setShowTestPicker(false)} className="text-gray-500 hover:text-gray-700">✕</button>
+          <div className="bg-white rounded-xl shadow-xl max-w-lg w-full max-h-[80vh] overflow-hidden">
+            <div className="p-4 border-b">
+              <div className="flex justify-between items-center mb-3">
+                <h3 className="font-semibold">Quick Add - {BILL_CATEGORIES.find(c => c.value === formData.category)?.label}</h3>
+                <button onClick={() => { setShowTestPicker(false); setServiceSearch(''); }} className="text-gray-500 hover:text-gray-700 text-xl leading-none">&times;</button>
+              </div>
+              {/* Search Input */}
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <input
+                  type="text"
+                  value={serviceSearch}
+                  onChange={(e) => setServiceSearch(e.target.value)}
+                  placeholder="Search services..."
+                  className="w-full pl-10 pr-4 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  autoFocus
+                />
+              </div>
             </div>
-            <div className="p-4 overflow-y-auto max-h-80">
-              {serviceItems.filter(s => s.category === formData.category).length === 0 ? (
-                <div className="text-center py-6 text-gray-500">
-                  <p>No services found for this category</p>
-                  <button 
-                    type="button" 
-                    onClick={() => navigate('/services')} 
-                    className="text-primary-600 text-sm mt-2"
-                  >
-                    Add Service Charges
-                  </button>
-                </div>
-              ) : (
-                serviceItems
+            <div className="p-4 overflow-y-auto max-h-96">
+              {(() => {
+                const filteredServices = serviceItems
                   .filter(s => s.category === formData.category)
-                  .map((service) => (
-                    <button 
-                      key={service._id} 
-                      type="button" 
-                      onClick={() => addTestFromPicker({ description: service.name, rate: service.rate })} 
-                      className="w-full flex justify-between items-center p-3 hover:bg-gray-50 rounded-lg text-left"
-                    >
-                      <span className="text-sm">{service.name}</span>
-                      <span className="font-medium text-primary-600 text-sm">₹{service.rate}</span>
-                    </button>
-                  ))
-              )}
+                  .filter(s => 
+                    !serviceSearch || 
+                    s.name.toLowerCase().includes(serviceSearch.toLowerCase())
+                  );
+                
+                if (serviceItems.filter(s => s.category === formData.category).length === 0) {
+                  return (
+                    <div className="text-center py-8 text-gray-500">
+                      <FlaskConical className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                      <p>No services found for this category</p>
+                      <button 
+                        type="button" 
+                        onClick={() => navigate('/services')} 
+                        className="text-primary-600 text-sm mt-2 font-medium"
+                      >
+                        Add Service Charges
+                      </button>
+                    </div>
+                  );
+                }
+                
+                if (filteredServices.length === 0) {
+                  return (
+                    <div className="text-center py-8 text-gray-500">
+                      <Search className="w-10 h-10 mx-auto mb-3 text-gray-300" />
+                      <p>No services match "{serviceSearch}"</p>
+                    </div>
+                  );
+                }
+                
+                return (
+                  <div className="space-y-2">
+                    {filteredServices.map((service) => (
+                      <button 
+                        key={service._id} 
+                        type="button" 
+                        onClick={() => { addTestFromPicker({ description: service.name, rate: service.rate }); setServiceSearch(''); }} 
+                        className="w-full flex justify-between items-center p-4 bg-gray-50 hover:bg-primary-50 hover:border-primary-200 border border-gray-200 rounded-xl text-left transition-colors"
+                      >
+                        <div>
+                          <p className="font-medium text-gray-900">{service.name}</p>
+                          {service.description && (
+                            <p className="text-xs text-gray-500 mt-0.5">{service.description}</p>
+                          )}
+                        </div>
+                        <span className="font-semibold text-primary-600 text-lg">₹{service.rate}</span>
+                      </button>
+                    ))}
+                  </div>
+                );
+              })()}
             </div>
           </div>
         </div>

@@ -32,16 +32,6 @@ const MiscBillPrint = forwardRef(({ bill }, ref) => {
     return numberToWords(Math.floor(num / 100000)) + ' Lakh' + (num % 100000 ? ' ' + numberToWords(num % 100000) : '');
   };
 
-  const getCategoryLabel = (category) => {
-    const labels = {
-      laboratory: 'Laboratory',
-      radiology: 'Radiology / Imaging',
-      procedure: 'Procedure',
-      other: 'Miscellaneous',
-    };
-    return labels[category] || category;
-  };
-
   if (!bill) return null;
 
   const patient = bill.patient || {};
@@ -54,15 +44,14 @@ const MiscBillPrint = forwardRef(({ bill }, ref) => {
 
       {/* Document Title */}
       <div className="document-title">
-        {getCategoryLabel(bill.category)} Invoice
+        Bill Receipt
       </div>
 
       {/* Bill Header */}
       <div className="bill-header">
         <div className="bill-info-left">
-          <div className="bill-number">Invoice No: {bill.billNo}</div>
+          <div className="bill-number">Bill No: {bill.billNo}</div>
           <div>Date: {formatDate(bill.billDate)} | Time: {formatTime(bill.billDate)}</div>
-          <div>Category: <strong>{getCategoryLabel(bill.category)}</strong></div>
         </div>
         <div className="bill-info-right" style={{ textAlign: 'right' }}>
           <div>Payment: <strong style={{ textTransform: 'capitalize' }}>{bill.paymentMode}</strong></div>
@@ -90,8 +79,14 @@ const MiscBillPrint = forwardRef(({ bill }, ref) => {
         </div>
         {referringDoctor.name && (
           <div className="patient-row">
-            <span className="patient-label">Referred By:</span>
+            <span className="patient-label">Consultant:</span>
             <span className="patient-value">{referringDoctor.name}</span>
+          </div>
+        )}
+        {(patient.phone || bill.patientPhone) && (
+          <div className="patient-row">
+            <span className="patient-label">Phone:</span>
+            <span className="patient-value">{patient.phone || bill.patientPhone}</span>
           </div>
         )}
       </div>

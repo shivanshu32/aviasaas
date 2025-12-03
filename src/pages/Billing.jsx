@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { Plus, FileText, FlaskConical, Pill, Search, Eye, Printer, Calendar } from 'lucide-react';
+import { Plus, FileText, FlaskConical, Pill, Search, Eye, Printer, Calendar, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { billingService } from '../services';
 
@@ -10,6 +10,8 @@ const billTypes = [
   { id: 'medicine', label: 'Medicine Bills', icon: Pill, color: 'text-green-600 bg-green-100' },
 ];
 
+const ITEMS_PER_PAGE_OPTIONS = [20, 50, 100];
+
 export default function Billing() {
   const { type = 'opd' } = useParams();
   const navigate = useNavigate();
@@ -18,15 +20,29 @@ export default function Billing() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [dateFilter, setDateFilter] = useState('');
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+  const [itemsPerPage, setItemsPerPage] = useState(20);
+
+  // Reset to page 1 when type or filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [type, dateFilter, itemsPerPage]);
 
   useEffect(() => {
     fetchBills();
-  }, [type, dateFilter]);
+  }, [type, dateFilter, currentPage, itemsPerPage]);
 
   const fetchBills = async () => {
     setLoading(true);
     try {
-      const params = {};
+      const params = {
+        page: currentPage,
+        limit: itemsPerPage,
+      };
       if (dateFilter) {
         // Use dateFrom and dateTo for the same day
         params.dateFrom = dateFilter;
@@ -37,26 +53,82 @@ export default function Billing() {
       switch (type) {
         case 'opd':
           response = await billingService.opd.getAll(params);
-          setBills(response.bills || []);
           break;
         case 'misc':
           response = await billingService.misc.getAll(params);
-          setBills(response.bills || []);
           break;
         case 'medicine':
           response = await billingService.medicine.getAll(params);
-          setBills(response.bills || []);
           break;
         default:
-          setBills([]);
+          response = { bills: [], pagination: { total: 0, totalPages: 1 } };
+      }
+      
+      setBills(response.bills || []);
+      if (response.pagination) {
+        setTotalItems(response.pagination.total || 0);
+        setTotalPages(response.pagination.totalPages || 1);
       }
     } catch (error) {
       console.error('Failed to fetch bills:', error);
       toast.error('Failed to load bills');
       setBills([]);
+      setTotalItems(0);
+      setTotalPages(1);
     } finally {
       setLoading(false);
     }
+  };
+
+  // Pagination handlers
+  const goToPage = (page) => {
+    setCurrentPage(Math.max(1, Math.min(page, totalPages)));
+  };
+
+  const goToFirstPage = () => goToPage(1);
+  const goToLastPage = () => goToPage(totalPages);
+  const goToPrevPage = () => goToPage(currentPage - 1);
+  const goToNextPage = () => goToPage(currentPage + 1);
+
+  // Generate page numbers to display
+  const getPageNumbers = () => {
+    const pages = [];
+    const maxVisiblePages = 5;
+    
+    if (totalPages <= maxVisiblePages) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      // Always show first page
+      pages.push(1);
+      
+      // Calculate start and end of visible range
+      let start = Math.max(2, currentPage - 1);
+      let end = Math.min(totalPages - 1, currentPage + 1);
+      
+      // Adjust if at the beginning
+      if (currentPage <= 3) {
+        end = Math.min(4, totalPages - 1);
+      }
+      
+      // Adjust if at the end
+      if (currentPage >= totalPages - 2) {
+        start = Math.max(2, totalPages - 3);
+      }
+      
+      // Add ellipsis if needed before middle pages
+      if (start > 2) pages.push('...');
+      
+      // Add middle pages
+      for (let i = start; i <= end; i++) pages.push(i);
+      
+      // Add ellipsis if needed after middle pages
+      if (end < totalPages - 1) pages.push('...');
+      
+      // Always show last page
+      if (totalPages > 1) pages.push(totalPages);
+    }
+    
+    return pages;
   };
 
   const getNewBillPath = () => {
@@ -114,22 +186,6 @@ export default function Billing() {
     
     return `${bill.items[0].description || bill.items[0].medicineName}, +${bill.items.length - 1} more`;
   };
-
-  // Filter bills by search query
-  const filteredBills = bills.filter((bill) => {
-    if (!searchQuery) return true;
-    const query = searchQuery.toLowerCase();
-    // Handle both patient object and direct patientName (for medicine bills)
-    const patientName = bill.patient?.name || bill.patientName || '';
-    const patientId = bill.patient?.patientId || '';
-    const patientPhone = bill.patient?.phone || bill.patientPhone || '';
-    return (
-      bill.billNo?.toLowerCase().includes(query) ||
-      patientName.toLowerCase().includes(query) ||
-      patientId.toLowerCase().includes(query) ||
-      patientPhone.includes(query)
-    );
-  });
 
   return (
     <div className="space-y-6">
@@ -202,11 +258,11 @@ export default function Billing() {
           <div className="flex items-center justify-center py-12">
             <div className="w-8 h-8 border-4 border-primary-500 border-t-transparent rounded-full animate-spin" />
           </div>
-        ) : filteredBills.length === 0 ? (
+        ) : bills.length === 0 ? (
           <div className="text-center py-12">
             <FileText className="w-12 h-12 text-gray-300 mx-auto mb-4" />
             <p className="text-gray-500">
-              {searchQuery || dateFilter ? 'No bills found matching your search' : 'No bills yet'}
+              {dateFilter ? 'No bills found for this date' : 'No bills yet'}
             </p>
             <Link to={getNewBillPath()} className="btn-primary mt-4 inline-flex">
               <Plus className="w-4 h-4" />
@@ -228,7 +284,19 @@ export default function Billing() {
               </tr>
             </thead>
             <tbody>
-              {filteredBills.map((bill) => (
+              {bills.filter((bill) => {
+                if (!searchQuery) return true;
+                const query = searchQuery.toLowerCase();
+                const patientName = bill.patient?.name || bill.patientName || '';
+                const patientId = bill.patient?.patientId || '';
+                const patientPhone = bill.patient?.phone || bill.patientPhone || '';
+                return (
+                  bill.billNo?.toLowerCase().includes(query) ||
+                  patientName.toLowerCase().includes(query) ||
+                  patientId.toLowerCase().includes(query) ||
+                  patientPhone.includes(query)
+                );
+              }).map((bill) => (
                 <tr key={bill._id}>
                   <td className="font-medium text-primary-600">
                     {bill.billNo}
@@ -281,27 +349,117 @@ export default function Billing() {
         )}
       </div>
 
-      {/* Summary */}
-      {!loading && filteredBills.length > 0 && (
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-sm text-gray-500">
-          <p>Showing {filteredBills.length} bill{filteredBills.length !== 1 ? 's' : ''}</p>
-          <div className="flex flex-wrap items-center gap-3 sm:gap-4">
-            <p>
-              Total: <span className="font-semibold text-gray-900">
-                ₹{filteredBills.reduce((sum, b) => sum + (b.grandTotal || 0), 0).toFixed(2)}
-              </span>
-            </p>
-            <p>
-              Collected: <span className="font-semibold text-green-600">
-                ₹{filteredBills.reduce((sum, b) => sum + (b.paidAmount || 0), 0).toFixed(2)}
-              </span>
-            </p>
-            <p>
-              Pending: <span className="font-semibold text-red-600">
-                ₹{filteredBills.reduce((sum, b) => sum + (b.dueAmount || 0), 0).toFixed(2)}
-              </span>
-            </p>
+      {/* Pagination */}
+      {!loading && bills.length > 0 && (
+        <div className="card p-4">
+          <div className="flex flex-col lg:flex-row items-center justify-between gap-4">
+            {/* Left: Items per page & info */}
+            <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-4 text-sm">
+              <div className="flex items-center gap-2">
+                <span className="text-gray-500">Show</span>
+                <select
+                  value={itemsPerPage}
+                  onChange={(e) => setItemsPerPage(Number(e.target.value))}
+                  className="input py-1.5 px-2 w-20"
+                >
+                  {ITEMS_PER_PAGE_OPTIONS.map((option) => (
+                    <option key={option} value={option}>{option}</option>
+                  ))}
+                </select>
+                <span className="text-gray-500">per page</span>
+              </div>
+              <div className="text-gray-600">
+                Showing <span className="font-medium">{((currentPage - 1) * itemsPerPage) + 1}</span> to{' '}
+                <span className="font-medium">{Math.min(currentPage * itemsPerPage, totalItems)}</span> of{' '}
+                <span className="font-medium">{totalItems}</span> bills
+              </div>
+            </div>
+
+            {/* Right: Page navigation */}
+            <div className="flex items-center gap-1">
+              {/* First page */}
+              <button
+                onClick={goToFirstPage}
+                disabled={currentPage === 1}
+                className="p-2 rounded-lg hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent transition-colors"
+                title="First page"
+              >
+                <ChevronsLeft className="w-4 h-4" />
+              </button>
+              
+              {/* Previous page */}
+              <button
+                onClick={goToPrevPage}
+                disabled={currentPage === 1}
+                className="p-2 rounded-lg hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent transition-colors"
+                title="Previous page"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+
+              {/* Page numbers */}
+              <div className="flex items-center gap-1 mx-1">
+                {getPageNumbers().map((page, index) => (
+                  page === '...' ? (
+                    <span key={`ellipsis-${index}`} className="px-2 py-1 text-gray-400">...</span>
+                  ) : (
+                    <button
+                      key={page}
+                      onClick={() => goToPage(page)}
+                      className={`min-w-[36px] h-9 px-3 rounded-lg font-medium transition-colors ${
+                        currentPage === page
+                          ? 'bg-primary-600 text-white'
+                          : 'hover:bg-gray-100 text-gray-700'
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  )
+                ))}
+              </div>
+
+              {/* Next page */}
+              <button
+                onClick={goToNextPage}
+                disabled={currentPage === totalPages}
+                className="p-2 rounded-lg hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent transition-colors"
+                title="Next page"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+              
+              {/* Last page */}
+              <button
+                onClick={goToLastPage}
+                disabled={currentPage === totalPages}
+                className="p-2 rounded-lg hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent transition-colors"
+                title="Last page"
+              >
+                <ChevronsRight className="w-4 h-4" />
+              </button>
+            </div>
           </div>
+        </div>
+      )}
+
+      {/* Page Summary */}
+      {!loading && bills.length > 0 && (
+        <div className="flex flex-wrap items-center justify-end gap-4 text-sm text-gray-500">
+          <p>
+            Page Total: <span className="font-semibold text-gray-900">
+              ₹{bills.reduce((sum, b) => sum + (b.grandTotal || 0), 0).toFixed(2)}
+            </span>
+          </p>
+          <p>
+            Collected: <span className="font-semibold text-green-600">
+              ₹{bills.reduce((sum, b) => sum + (b.paidAmount || 0), 0).toFixed(2)}
+            </span>
+          </p>
+          <p>
+            Pending: <span className="font-semibold text-red-600">
+              ₹{bills.reduce((sum, b) => sum + (b.dueAmount || 0), 0).toFixed(2)}
+            </span>
+          </p>
         </div>
       )}
     </div>

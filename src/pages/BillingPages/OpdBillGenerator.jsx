@@ -42,7 +42,7 @@ export default function OpdBillGenerator() {
     doctorId: searchParams.get('doctorId') || '',
     appointmentId: appointmentId || '',
     items: [...DEFAULT_ITEMS],
-    discountType: 'fixed',
+    discountType: 'percentage',
     discountValue: 0,
     paymentMode: 'cash',
     paymentDetails: {

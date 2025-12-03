@@ -39,7 +39,7 @@ export default function MedicineBilling() {
     patientId: '',
     doctorId: '',
     items: [],
-    discountType: 'fixed',
+    discountType: 'percentage',
     discountValue: 0,
     paymentMode: 'cash',
     paymentDetails: { cash: 0, card: 0, upi: 0, upiRef: '' },

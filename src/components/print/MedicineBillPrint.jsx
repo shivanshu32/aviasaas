@@ -50,7 +50,7 @@ const MedicineBillPrint = forwardRef(({ bill }, ref) => {
       <Letterhead showDoctor={false} />
 
       {/* Document Title */}
-      <div className="document-title">Medicine Bill / Tax Invoice</div>
+      <div className="document-title">Bill Receipt</div>
 
       {/* Bill Header */}
       <div className="bill-header">
@@ -82,7 +82,7 @@ const MedicineBillPrint = forwardRef(({ bill }, ref) => {
         </div>
         {doctor.name && (
           <div className="patient-row">
-            <span className="patient-label">Prescribed By:</span>
+            <span className="patient-label">Consultant:</span>
             <span className="patient-value">{doctor.name}</span>
           </div>
         )}

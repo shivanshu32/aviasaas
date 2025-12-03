@@ -43,7 +43,7 @@ const OpdBillPrint = forwardRef(({ bill }, ref) => {
       <Letterhead doctor={doctor} showDoctor={true} />
 
       {/* Document Title */}
-      <div className="document-title" style={{ borderTop: 'none' }}>OPD Bill / Receipt</div>
+      <div className="document-title" style={{ borderTop: 'none' }}>Bill Receipt</div>
 
       {/* Bill Header */}
       <div className="bill-header">
@@ -74,7 +74,7 @@ const OpdBillPrint = forwardRef(({ bill }, ref) => {
           <span className="patient-value">{patient.age || '-'} / {patient.gender || '-'}</span>
         </div>
         <div className="patient-row">
-          <span className="patient-label">Doctor:</span>
+          <span className="patient-label">Consultant:</span>
           <span className="patient-value">{doctor.name || '-'}</span>
         </div>
       </div>

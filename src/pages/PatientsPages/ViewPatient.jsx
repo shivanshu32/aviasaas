@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { 
   ArrowLeft, Edit, Phone, Mail, MapPin, AlertCircle, Loader2,
   Calendar, FileText, Receipt, Pill, Plus, Eye, User,
-  Stethoscope, ClipboardList, Droplets, Heart, AlertTriangle
+  Droplets, Heart, AlertTriangle, Printer, FlaskConical
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { Button, Card, Badge } from '../../components/ui';
@@ -16,10 +16,12 @@ export default function ViewPatient() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState('appointments');
+  const [billSubTab, setBillSubTab] = useState('opd');
   
   // Related data
   const [appointments, setAppointments] = useState([]);
   const [opdBills, setOpdBills] = useState([]);
+  const [miscBills, setMiscBills] = useState([]);
   const [medicineBills, setMedicineBills] = useState([]);
   const [prescriptions, setPrescriptions] = useState([]);
   const [dataLoading, setDataLoading] = useState(false);
@@ -72,11 +74,13 @@ export default function ViewPatient() {
       setDataLoading(true);
       try {
         if (activeTab === 'bills' && opdBills.length === 0) {
-          const [opdRes, medRes] = await Promise.all([
-            billingService.opd.getAll({ patientId: patient._id }),
-            billingService.medicine.getAll({ patientId: patient._id }),
+          const [opdRes, miscRes, medRes] = await Promise.all([
+            billingService.opd.getAll({ patientId: patient._id, limit: 100 }),
+            billingService.misc.getAll({ patientId: patient._id, limit: 100 }),
+            billingService.medicine.getAll({ patientId: patient._id, limit: 100 }),
           ]);
           setOpdBills(opdRes.bills || []);
+          setMiscBills(miscRes.bills || []);
           setMedicineBills(medRes.bills || []);
         } else if (activeTab === 'prescriptions' && prescriptions.length === 0) {
           const res = await prescriptionService.getAll({ patientId: patient._id });
@@ -327,43 +331,7 @@ export default function ViewPatient() {
             </div>
           </Card>
 
-          {/* Quick Actions */}
-          <Card>
-            <h3 className="text-sm font-semibold text-gray-700 mb-3">Quick Actions</h3>
-            <div className="grid grid-cols-1 gap-2">
-              <Link to={`/appointments/book?patientId=${patient._id}`} className="block">
-                <button className="w-full flex items-center gap-3 p-3 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg transition-colors text-left">
-                  <Calendar className="w-5 h-5" />
-                  <span className="font-medium text-sm">Book Appointment</span>
-                </button>
-              </Link>
-              <Link to={`/billing/opd/new?patientId=${patient._id}`} className="block">
-                <button className="w-full flex items-center gap-3 p-3 bg-green-50 hover:bg-green-100 text-green-700 rounded-lg transition-colors text-left">
-                  <Stethoscope className="w-5 h-5" />
-                  <span className="font-medium text-sm">OPD Bill</span>
-                </button>
-              </Link>
-              <Link to={`/billing/medicine/new?patientId=${patient._id}`} className="block">
-                <button className="w-full flex items-center gap-3 p-3 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-lg transition-colors text-left">
-                  <Pill className="w-5 h-5" />
-                  <span className="font-medium text-sm">Medicine Bill</span>
-                </button>
-              </Link>
-              <Link to={`/billing/misc/new?patientId=${patient._id}`} className="block">
-                <button className="w-full flex items-center gap-3 p-3 bg-orange-50 hover:bg-orange-100 text-orange-700 rounded-lg transition-colors text-left">
-                  <ClipboardList className="w-5 h-5" />
-                  <span className="font-medium text-sm">Lab/Misc Bill</span>
-                </button>
-              </Link>
-              <Link to={`/prescriptions/generate?patientId=${patient._id}`} className="block">
-                <button className="w-full flex items-center gap-3 p-3 bg-teal-50 hover:bg-teal-100 text-teal-700 rounded-lg transition-colors text-left">
-                  <FileText className="w-5 h-5" />
-                  <span className="font-medium text-sm">Generate Prescription</span>
-                </button>
-              </Link>
-            </div>
-          </Card>
-        </div>
+          </div>
 
         {/* Right Column - Tabs Content (2/3) */}
         <div className="w-2/3">
@@ -442,99 +410,210 @@ export default function ViewPatient() {
           )}
 
           {activeTab === 'bills' && (
-            <div className="space-y-4">
-              {/* OPD Bills */}
-              <Card>
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="font-semibold text-gray-900">OPD Bills</h3>
-                  <Link to={`/billing/opd/new?patientId=${patient._id}`}>
-                    <Button size="sm" icon={Plus}>New OPD Bill</Button>
-                  </Link>
+            <Card>
+              {/* Bill Sub-tabs */}
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex gap-1 p-1 bg-gray-100 rounded-lg">
+                  <button
+                    onClick={() => setBillSubTab('opd')}
+                    className={`flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
+                      billSubTab === 'opd' 
+                        ? 'bg-white shadow text-blue-600' 
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    <Receipt className="w-4 h-4" />
+                    OPD
+                  </button>
+                  <button
+                    onClick={() => setBillSubTab('misc')}
+                    className={`flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
+                      billSubTab === 'misc' 
+                        ? 'bg-white shadow text-purple-600' 
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    <FlaskConical className="w-4 h-4" />
+                    Lab/Misc
+                  </button>
+                  <button
+                    onClick={() => setBillSubTab('medicine')}
+                    className={`flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
+                      billSubTab === 'medicine' 
+                        ? 'bg-white shadow text-green-600' 
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    <Pill className="w-4 h-4" />
+                    Medicine
+                  </button>
                 </div>
-                {dataLoading ? (
-                  <div className="flex items-center justify-center py-8">
-                    <Loader2 className="w-6 h-6 animate-spin text-primary-600" />
-                  </div>
-                ) : opdBills.length === 0 ? (
-                  <div className="text-center py-6 text-gray-500">
-                    <Receipt className="w-10 h-10 mx-auto mb-2 text-gray-300" />
-                    <p>No OPD bills found</p>
-                  </div>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b bg-gray-50">
-                          <th className="text-left py-3 px-3 font-medium text-gray-600">Bill No</th>
-                          <th className="text-left py-3 px-3 font-medium text-gray-600">Date</th>
-                          <th className="text-left py-3 px-3 font-medium text-gray-600">Doctor</th>
-                          <th className="text-right py-3 px-3 font-medium text-gray-600">Amount</th>
-                          <th className="text-left py-3 px-3 font-medium text-gray-600">Status</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {opdBills.map((bill) => (
-                          <tr key={bill._id} className="border-b last:border-0 hover:bg-gray-50">
-                            <td className="py-3 px-3 font-medium text-primary-600">{bill.billNo}</td>
-                            <td className="py-3 px-3">{formatDate(bill.billDate)}</td>
-                            <td className="py-3 px-3">{bill.doctor?.name || '-'}</td>
-                            <td className="py-3 px-3 text-right font-medium">₹{bill.grandTotal?.toFixed(2)}</td>
-                            <td className="py-3 px-3">{getStatusBadge(bill.paymentStatus)}</td>
+                <Link to={`/billing/${billSubTab}/new?patientId=${patient._id}`}>
+                  <Button size="sm" icon={Plus}>New Bill</Button>
+                </Link>
+              </div>
+
+              {/* OPD Bills */}
+              {billSubTab === 'opd' && (
+                <>
+                  {dataLoading ? (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="w-6 h-6 animate-spin text-primary-600" />
+                    </div>
+                  ) : opdBills.length === 0 ? (
+                    <div className="text-center py-12 text-gray-500">
+                      <Receipt className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                      <p className="font-medium text-gray-400">No OPD bills found</p>
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b bg-gray-50">
+                            <th className="text-left py-3 px-3 font-medium text-gray-600">Bill No</th>
+                            <th className="text-left py-3 px-3 font-medium text-gray-600">Date</th>
+                            <th className="text-left py-3 px-3 font-medium text-gray-600">Doctor</th>
+                            <th className="text-right py-3 px-3 font-medium text-gray-600">Amount</th>
+                            <th className="text-left py-3 px-3 font-medium text-gray-600">Status</th>
+                            <th className="text-left py-3 px-3 font-medium text-gray-600">Actions</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </Card>
+                        </thead>
+                        <tbody>
+                          {opdBills.map((bill) => (
+                            <tr key={bill._id} className="border-b last:border-0 hover:bg-gray-50">
+                              <td className="py-3 px-3 font-medium text-primary-600">{bill.billNo}</td>
+                              <td className="py-3 px-3">{formatDate(bill.billDate)}</td>
+                              <td className="py-3 px-3">{bill.doctor?.name || '-'}</td>
+                              <td className="py-3 px-3 text-right font-medium">₹{bill.grandTotal?.toFixed(2)}</td>
+                              <td className="py-3 px-3">{getStatusBadge(bill.paymentStatus)}</td>
+                              <td className="py-3 px-3">
+                                <div className="flex items-center gap-2">
+                                  <Link
+                                    to={`/billing/opd/${bill._id}`}
+                                    className="p-1.5 text-gray-600 hover:bg-gray-100 rounded"
+                                    title="View & Print"
+                                  >
+                                    <Printer className="w-4 h-4" />
+                                  </Link>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </>
+              )}
+
+              {/* Lab/Misc Bills */}
+              {billSubTab === 'misc' && (
+                <>
+                  {dataLoading ? (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="w-6 h-6 animate-spin text-primary-600" />
+                    </div>
+                  ) : miscBills.length === 0 ? (
+                    <div className="text-center py-12 text-gray-500">
+                      <FlaskConical className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                      <p className="font-medium text-gray-400">No Lab/Misc bills found</p>
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b bg-gray-50">
+                            <th className="text-left py-3 px-3 font-medium text-gray-600">Bill No</th>
+                            <th className="text-left py-3 px-3 font-medium text-gray-600">Date</th>
+                            <th className="text-left py-3 px-3 font-medium text-gray-600">Category</th>
+                            <th className="text-right py-3 px-3 font-medium text-gray-600">Amount</th>
+                            <th className="text-left py-3 px-3 font-medium text-gray-600">Status</th>
+                            <th className="text-left py-3 px-3 font-medium text-gray-600">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {miscBills.map((bill) => (
+                            <tr key={bill._id} className="border-b last:border-0 hover:bg-gray-50">
+                              <td className="py-3 px-3 font-medium text-primary-600">{bill.billNo}</td>
+                              <td className="py-3 px-3">{formatDate(bill.billDate)}</td>
+                              <td className="py-3 px-3 capitalize">{bill.category || '-'}</td>
+                              <td className="py-3 px-3 text-right font-medium">₹{bill.grandTotal?.toFixed(2)}</td>
+                              <td className="py-3 px-3">{getStatusBadge(bill.paymentStatus)}</td>
+                              <td className="py-3 px-3">
+                                <div className="flex items-center gap-2">
+                                  <Link
+                                    to={`/billing/misc/${bill._id}`}
+                                    className="p-1.5 text-gray-600 hover:bg-gray-100 rounded"
+                                    title="View & Print"
+                                  >
+                                    <Printer className="w-4 h-4" />
+                                  </Link>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </>
+              )}
 
               {/* Medicine Bills */}
-              <Card>
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="font-semibold text-gray-900">Medicine Bills</h3>
-                  <Link to={`/billing/medicine/new?patientId=${patient._id}`}>
-                    <Button size="sm" icon={Plus}>New Medicine Bill</Button>
-                  </Link>
-                </div>
-                {dataLoading ? (
-                  <div className="flex items-center justify-center py-8">
-                    <Loader2 className="w-6 h-6 animate-spin text-primary-600" />
-                  </div>
-                ) : medicineBills.length === 0 ? (
-                  <div className="text-center py-6 text-gray-500">
-                    <Pill className="w-10 h-10 mx-auto mb-2 text-gray-300" />
-                    <p>No medicine bills found</p>
-                  </div>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b bg-gray-50">
-                          <th className="text-left py-3 px-3 font-medium text-gray-600">Bill No</th>
-                          <th className="text-left py-3 px-3 font-medium text-gray-600">Date</th>
-                          <th className="text-left py-3 px-3 font-medium text-gray-600">Items</th>
-                          <th className="text-right py-3 px-3 font-medium text-gray-600">Amount</th>
-                          <th className="text-left py-3 px-3 font-medium text-gray-600">Status</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {medicineBills.map((bill) => (
-                          <tr key={bill._id} className="border-b last:border-0 hover:bg-gray-50">
-                            <td className="py-3 px-3 font-medium text-primary-600">{bill.billNo}</td>
-                            <td className="py-3 px-3">{formatDate(bill.billDate)}</td>
-                            <td className="py-3 px-3">
-                              {typeof bill.items === 'number' ? `${bill.items} items` : `${bill.items?.length || 0} items`}
-                            </td>
-                            <td className="py-3 px-3 text-right font-medium">₹{bill.grandTotal?.toFixed(2)}</td>
-                            <td className="py-3 px-3">{getStatusBadge(bill.paymentStatus)}</td>
+              {billSubTab === 'medicine' && (
+                <>
+                  {dataLoading ? (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="w-6 h-6 animate-spin text-primary-600" />
+                    </div>
+                  ) : medicineBills.length === 0 ? (
+                    <div className="text-center py-12 text-gray-500">
+                      <Pill className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                      <p className="font-medium text-gray-400">No medicine bills found</p>
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b bg-gray-50">
+                            <th className="text-left py-3 px-3 font-medium text-gray-600">Bill No</th>
+                            <th className="text-left py-3 px-3 font-medium text-gray-600">Date</th>
+                            <th className="text-left py-3 px-3 font-medium text-gray-600">Items</th>
+                            <th className="text-right py-3 px-3 font-medium text-gray-600">Amount</th>
+                            <th className="text-left py-3 px-3 font-medium text-gray-600">Status</th>
+                            <th className="text-left py-3 px-3 font-medium text-gray-600">Actions</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </Card>
-            </div>
+                        </thead>
+                        <tbody>
+                          {medicineBills.map((bill) => (
+                            <tr key={bill._id} className="border-b last:border-0 hover:bg-gray-50">
+                              <td className="py-3 px-3 font-medium text-primary-600">{bill.billNo}</td>
+                              <td className="py-3 px-3">{formatDate(bill.billDate)}</td>
+                              <td className="py-3 px-3">
+                                {typeof bill.items === 'number' ? `${bill.items} items` : `${bill.items?.length || 0} items`}
+                              </td>
+                              <td className="py-3 px-3 text-right font-medium">₹{bill.grandTotal?.toFixed(2)}</td>
+                              <td className="py-3 px-3">{getStatusBadge(bill.paymentStatus)}</td>
+                              <td className="py-3 px-3">
+                                <div className="flex items-center gap-2">
+                                  <Link
+                                    to={`/billing/medicine/${bill._id}`}
+                                    className="p-1.5 text-gray-600 hover:bg-gray-100 rounded"
+                                    title="View & Print"
+                                  >
+                                    <Printer className="w-4 h-4" />
+                                  </Link>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </>
+              )}
+            </Card>
           )}
 
           {activeTab === 'prescriptions' && (
