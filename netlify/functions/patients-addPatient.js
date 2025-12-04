@@ -23,7 +23,7 @@
 
 import { ObjectId } from 'mongodb';
 import { getDb, COLLECTIONS } from './utils/db.js';
-import { created, badRequest, conflict } from './utils/response.js';
+import { created, badRequest } from './utils/response.js';
 import { withErrorHandler, ValidationError } from './utils/errorHandler.js';
 import { validateCreatePatient } from '../../shared/validators/patient.validator.js';
 import { generateUniqueId } from '../../shared/utils/idGenerator.js';
@@ -52,19 +52,6 @@ async function addPatient(event) {
   const patientData = validation.data;
   const db = await getDb();
   const collection = db.collection(COLLECTIONS.PATIENTS);
-
-  // Check for duplicate phone number
-  const existingPatient = await collection.findOne({ 
-    phone: patientData.phone,
-    isActive: true 
-  });
-
-  if (existingPatient) {
-    return conflict('Patient with this phone number already exists', {
-      existingPatientId: existingPatient.patientId,
-      existingPatientName: existingPatient.name,
-    });
-  }
 
   // Generate unique patient ID
   const patientId = await generateUniqueId(
