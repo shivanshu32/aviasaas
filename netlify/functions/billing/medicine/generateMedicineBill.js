@@ -208,6 +208,7 @@ async function generateMedicineBill(event) {
 
   // Create bill and update stock using transaction
   const now = new Date();
+  const billDate = data.billDate ? new Date(data.billDate) : now;
   
   const bill = {
     _id: new ObjectId(),
@@ -217,7 +218,7 @@ async function generateMedicineBill(event) {
     patientPhone: data.patientPhone || null,
     doctorId: doctor ? doctor._id : null,
     prescriptionId: prescription ? prescription._id : null,
-    billDate: now,
+    billDate,
     items: billItems,
     subtotal,
     discountType: data.discountType || null,

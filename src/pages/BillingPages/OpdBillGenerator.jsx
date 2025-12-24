@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Plus, Trash2, Printer, Receipt, Search, User, Stethoscope, CreditCard } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Printer, Receipt, Search, User, Stethoscope, CreditCard, Calendar } from 'lucide-react';
 import { useReactToPrint } from 'react-to-print';
 import toast from 'react-hot-toast';
 import { Button, Input, Select } from '../../components/ui';
@@ -53,6 +53,7 @@ export default function OpdBillGenerator() {
       upiRef: '',
     },
     remarks: '',
+    billDate: new Date().toISOString().split('T')[0],
   });
 
   useEffect(() => {
@@ -245,6 +246,7 @@ export default function OpdBillGenerator() {
           upiRef: formData.paymentDetails.upiRef || null,
         } : undefined,
         remarks: formData.remarks || null,
+        billDate: formData.billDate || null,
       };
 
       const response = await billingService.opd.create(payload);
@@ -409,6 +411,21 @@ export default function OpdBillGenerator() {
 
             {/* Payment Mode */}
             <Select label="Payment Mode" name="paymentMode" value={formData.paymentMode} onChange={handleChange} options={PAYMENT_MODES} />
+
+            {/* Bill Date */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                <span className="flex items-center gap-1"><Calendar className="w-3 h-3" /> Bill Date</span>
+              </label>
+              <input
+                type="date"
+                name="billDate"
+                value={formData.billDate}
+                onChange={handleChange}
+                max={new Date().toISOString().split('T')[0]}
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+              />
+            </div>
             
             {formData.paymentMode === 'upi' && (
               <Input label="UPI Reference" name="paymentDetails.upiRef" value={formData.paymentDetails.upiRef} onChange={handleChange} placeholder="Transaction ID" />

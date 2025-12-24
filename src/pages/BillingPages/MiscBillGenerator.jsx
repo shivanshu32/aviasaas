@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Plus, Trash2, Printer, Receipt, Search, User, CreditCard, FlaskConical } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Printer, Receipt, Search, User, CreditCard, FlaskConical, Calendar } from 'lucide-react';
 import { useReactToPrint } from 'react-to-print';
 import toast from 'react-hot-toast';
 import { Button, Input, Select } from '../../components/ui';
@@ -52,6 +52,7 @@ export default function MiscBillGenerator() {
     paymentMode: 'cash',
     paymentDetails: { cash: 0, card: 0, upi: 0, upiRef: '' },
     remarks: '',
+    billDate: new Date().toISOString().split('T')[0],
   });
 
   useEffect(() => {
@@ -212,6 +213,7 @@ export default function MiscBillGenerator() {
         paymentMode: formData.paymentMode,
         paymentDetails: formData.paymentMode === 'mixed' ? formData.paymentDetails : undefined,
         remarks: formData.remarks || null,
+        billDate: formData.billDate || null,
       };
 
       const response = await billingService.misc.create(payload);
@@ -323,6 +325,19 @@ export default function MiscBillGenerator() {
               )}
               <Select label="Consultant" name="referredBy" value={formData.referredBy} onChange={handleChange} options={doctorOptions} placeholder="Select doctor" />
               <Select label="Category" name="category" value={formData.category} onChange={handleChange} options={BILL_CATEGORIES} />
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <span className="flex items-center gap-1"><Calendar className="w-3 h-3" /> Bill Date</span>
+                </label>
+                <input
+                  type="date"
+                  name="billDate"
+                  value={formData.billDate}
+                  onChange={handleChange}
+                  max={new Date().toISOString().split('T')[0]}
+                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                />
+              </div>
             </div>
           </div>
 

@@ -119,6 +119,7 @@ async function generateMiscBill(event) {
 
   // Create bill document
   const now = new Date();
+  const billDate = data.billDate ? new Date(data.billDate) : now;
   const bill = {
     _id: new ObjectId(),
     billNo,
@@ -126,7 +127,7 @@ async function generateMiscBill(event) {
     patientName: data.patientName,
     patientPhone: data.patientPhone || null,
     referredBy: referringDoctor ? referringDoctor._id : null,
-    billDate: now,
+    billDate,
     category: data.category,
     items,
     subtotal,
