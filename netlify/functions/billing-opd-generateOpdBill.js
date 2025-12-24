@@ -131,13 +131,14 @@ async function generateOpdBill(event) {
 
   // Create bill document
   const now = new Date();
+  const billDate = data.billDate ? new Date(data.billDate) : now;
   const bill = {
     _id: new ObjectId(),
     billNo,
     patientId: patient._id,
     doctorId: doctor._id,
     appointmentId: appointment ? appointment._id : null,
-    billDate: now,
+    billDate,
     items,
     subtotal,
     discountType: data.discountType || null,
