@@ -12,13 +12,13 @@ const addressSchema = z.object({
   line2: z.string().max(200).optional().or(z.literal('')),
   city: z.string().max(100).optional().or(z.literal('')),
   state: z.string().max(100).optional().or(z.literal('')),
-  pincode: z.string().regex(/^\d{6}$/, 'Pincode must be 6 digits').optional().or(z.literal('')),
+  pincode: z.union([z.literal(''), z.string().regex(/^\d{6}$/, 'Pincode must be 6 digits')]).optional(),
 }).optional();
 
 // Emergency contact schema (nested)
 const emergencyContactSchema = z.object({
   name: z.string().max(100).optional().or(z.literal('')),
-  phone: z.string().regex(/^\d{10}$/, 'Phone must be 10 digits').optional().or(z.literal('')),
+  phone: z.union([z.literal(''), z.string().regex(/^\d{10}$/, 'Phone must be 10 digits')]).optional(),
   relation: z.string().max(50).optional().or(z.literal('')),
 }).optional();
 
