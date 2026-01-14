@@ -33,6 +33,7 @@ export const createPatientSchema = z.object({
     .trim(),
   
   age: z
+    .coerce
     .number()
     .int('Age must be a whole number')
     .min(0, 'Age cannot be negative')
