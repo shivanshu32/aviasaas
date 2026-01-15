@@ -115,9 +115,13 @@ export default function EditPatient() {
     const newErrors = {};
 
     if (!formData.name.trim()) newErrors.name = 'Name is required';
-    if (!formData.age) newErrors.age = 'Age is required';
-    else if (isNaN(formData.age) || formData.age < 0 || formData.age > 150) {
-      newErrors.age = 'Enter a valid age';
+    if (formData.age === '' || formData.age === null || formData.age === undefined) {
+      newErrors.age = 'Age is required';
+    } else {
+      const ageNum = Number(formData.age);
+      if (isNaN(ageNum) || ageNum < 0 || ageNum > 150) {
+        newErrors.age = 'Enter a valid age';
+      }
     }
     if (!formData.gender) newErrors.gender = 'Gender is required';
     if (!formData.phone) newErrors.phone = 'Phone is required';
