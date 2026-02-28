@@ -271,14 +271,15 @@ export default function ViewPatient() {
             </div>
 
             {/* Allergies */}
-            {patient.allergies && patient.allergies.length > 0 && (
+            {((patient.allergies && patient.allergies.length > 0) || 
+              (patient.medicalHistory?.allergies && patient.medicalHistory.allergies.length > 0)) && (
               <div className="py-4 border-t border-gray-100">
                 <div className="flex items-center gap-2 mb-2">
                   <AlertTriangle className="w-4 h-4 text-red-500" />
                   <span className="text-sm font-medium text-gray-700">Allergies</span>
                 </div>
                 <div className="flex flex-wrap gap-1">
-                  {patient.allergies.map((allergy, index) => (
+                  {(patient.allergies?.length > 0 ? patient.allergies : patient.medicalHistory?.allergies || []).map((allergy, index) => (
                     <span
                       key={index}
                       className="px-2 py-0.5 bg-red-50 text-red-700 text-xs rounded-full"

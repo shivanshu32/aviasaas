@@ -72,8 +72,14 @@ export default function EditPatient() {
             state: patient.address?.state || '',
             pincode: patient.address?.pincode || '',
           },
-          allergies: Array.isArray(patient.allergies) ? patient.allergies.join(', ') : '',
-          medicalHistory: patient.medicalHistory || '',
+          allergies: Array.isArray(patient.allergies) && patient.allergies.length > 0
+            ? patient.allergies.join(', ')
+            : (Array.isArray(patient.medicalHistory?.allergies) && patient.medicalHistory.allergies.length > 0
+              ? patient.medicalHistory.allergies.join(', ')
+              : ''),
+          medicalHistory: typeof patient.medicalHistory === 'object' && patient.medicalHistory !== null
+            ? patient.medicalHistory.notes || ''
+            : (patient.medicalHistory || ''),
           emergencyContact: {
             name: patient.emergencyContact?.name || '',
             phone: patient.emergencyContact?.phone || '',
