@@ -30,6 +30,8 @@ async function updateMedicine(event) {
     return notFound('Medicine');
   }
 
+  const syncBatchPrices = Boolean(data.syncBatchPrices);
+
   const updateFields = {
     updatedAt: new Date(),
   };
@@ -91,7 +93,26 @@ async function updateMedicine(event) {
     { returnDocument: 'after' },
   );
 
-  return success({ medicine: result }, 'Medicine updated successfully');
+  if (syncBatchPrices) {
+    const batchSet = { updatedAt: new Date() };
+    if (updateFields.purchasePrice !== undefined) {
+      batchSet.purchasePrice = updateFields.purchasePrice;
+    }
+    if (updateFields.sellingPrice !== undefined) {
+      batchSet.sellingPrice = updateFields.sellingPrice;
+      batchSet.mrp = updateFields.sellingPrice;
+    }
+    if (Object.keys(batchSet).length > 1) {
+      await db.collection(COLLECTIONS.MEDICINE_STOCK_BATCHES).updateMany(
+        { medicineId: medicine._id },
+        { $set: batchSet },
+      );
+    }
+  }
+
+  const updatedMedicine = result?.value ?? result;
+
+  return success({ medicine: updatedMedicine }, 'Medicine updated successfully');
 }
 
 export const handler = withErrorHandler(updateMedicine);

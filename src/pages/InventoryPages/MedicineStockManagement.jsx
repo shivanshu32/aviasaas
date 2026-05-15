@@ -1,10 +1,10 @@
 ﻿import { useState, useEffect, useRef } from 'react';
 import { Plus, Package, AlertTriangle, Clock, Search, X, Check, Pencil } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { Button, Input, Select, Card, Table, Modal, Badge } from '../../components/ui';
+import { Button, Input, Card, Table, Modal, Badge } from '../../components/ui';
 import { medicineService } from '../../services';
-import { SCHEDULE_TYPE } from '@shared/constants/enums.js';
 import { formatMedicinePrice, getMedicineRowPrices } from '../../utils/medicinePrice';
+import MedicineCatalogModal from '../../components/inventory/MedicineCatalogModal';
 
 // Medicine Search Component for Add Stock modal
 function MedicineSearch({ value, onChange, onSelect, selectedMedicine }) {
@@ -67,7 +67,7 @@ function MedicineSearch({ value, onChange, onSelect, selectedMedicine }) {
           <Check className="w-5 h-5 text-primary-600" />
           <div className="flex-1">
             <p className="font-medium text-primary-900">{selectedMedicine.name}</p>
-            <p className="text-xs text-primary-600">{selectedMedicine.medicineId} ΓÇó {selectedMedicine.category}</p>
+            <p className="text-xs text-primary-600">{selectedMedicine.medicineId} • {selectedMedicine.category}</p>
           </div>
           <button
             type="button"
@@ -145,45 +145,6 @@ function MedicineSearch({ value, onChange, onSelect, selectedMedicine }) {
   );
 }
 
-const MEDICINE_CATEGORIES = [
-  { value: 'tablet', label: 'Tablet' },
-  { value: 'capsule', label: 'Capsule' },
-  { value: 'syrup', label: 'Syrup' },
-  { value: 'injection', label: 'Injection' },
-  { value: 'cream', label: 'Cream/Ointment' },
-  { value: 'drops', label: 'Drops' },
-  { value: 'inhaler', label: 'Inhaler' },
-  { value: 'other', label: 'Other' },
-];
-
-const SCHEDULE_TYPE_SELECT = [
-  { value: SCHEDULE_TYPE.NONE, label: 'None' },
-  { value: SCHEDULE_TYPE.H, label: 'H' },
-  { value: SCHEDULE_TYPE.H1, label: 'H1' },
-  { value: SCHEDULE_TYPE.X, label: 'X' },
-];
-
-function getInitialMedicineForm() {
-  return {
-    name: '',
-    genericName: '',
-    category: 'tablet',
-    manufacturer: '',
-    composition: '',
-    strength: '',
-    packSize: 10,
-    packUnit: 'tablets',
-    reorderLevel: 20,
-    gstRate: 12,
-    hsnCode: '',
-    rackLocation: '',
-    isScheduled: false,
-    scheduleType: SCHEDULE_TYPE.NONE,
-    purchasePrice: '',
-    sellingPrice: '',
-  };
-}
-
 export default function MedicineStockManagement() {
   const [activeTab, setActiveTab] = useState('all');
   const [medicines, setMedicines] = useState([]);
@@ -192,14 +153,10 @@ export default function MedicineStockManagement() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Modals
-  const [showAddMedicine, setShowAddMedicine] = useState(false);
-  const [editingMedicine, setEditingMedicine] = useState(null);
+  const [catalogModalOpen, setCatalogModalOpen] = useState(false);
+  const [catalogMedicine, setCatalogMedicine] = useState(null);
   const [showAddStock, setShowAddStock] = useState(false);
   const [selectedMedicine, setSelectedMedicine] = useState(null);
-
-  // Form states
-  const [medicineForm, setMedicineForm] = useState(() => getInitialMedicineForm());
 
   const [stockForm, setStockForm] = useState({
     medicineId: '',
@@ -214,37 +171,26 @@ export default function MedicineStockManagement() {
   });
 
   const [formLoading, setFormLoading] = useState(false);
+  const [catalogTotal, setCatalogTotal] = useState(0);
+
+  useEffect(() => {
+    medicineService.getCatalogTotal().then(setCatalogTotal).catch(() => {});
+  }, []);
 
   useEffect(() => {
     fetchData();
   }, [activeTab, searchQuery]);
 
-  const fetchAllMedicinesWithStock = async (search) => {
-    const pageSize = 200;
-    const all = [];
-    let page = 1;
-    while (true) {
-      const response = await medicineService.getAll({
-        search,
-        includeStock: 'true',
-        page,
-        limit: pageSize,
-      });
-      const batch = response.medicines ?? [];
-      all.push(...batch);
-      const pag = response.pagination;
-      if (!pag?.hasNextPage || batch.length === 0) break;
-      page += 1;
-    }
-    return all;
-  };
-
   const fetchData = async () => {
     setLoading(true);
     try {
       if (activeTab === 'all') {
-        const merged = await fetchAllMedicinesWithStock(searchQuery);
+        const { medicines: merged, total } = await medicineService.fetchAll({
+          search: searchQuery.trim() || undefined,
+          includeStock: 'true',
+        });
         setMedicines(merged);
+        setCatalogTotal(total);
       } else if (activeTab === 'low') {
         const response = await medicineService.stock.getLowStock();
         setLowStock(response.lowStockItems || []);
@@ -256,75 +202,6 @@ export default function MedicineStockManagement() {
       console.error('Failed to fetch data:', error);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleSaveMedicine = async (e) => {
-    e.preventDefault();
-
-    const purchaseRaw = medicineForm.purchasePrice;
-    const sellingRaw = medicineForm.sellingPrice;
-
-    if (purchaseRaw !== '') {
-      const n = Number(purchaseRaw);
-      if (Number.isNaN(n) || n < 0) {
-        toast.error('Invalid purchase price');
-        return;
-      }
-    }
-    if (sellingRaw !== '') {
-      const n = Number(sellingRaw);
-      if (Number.isNaN(n) || n < 0) {
-        toast.error('Invalid selling price');
-        return;
-      }
-    }
-
-    const payload = {
-      name: medicineForm.name.trim(),
-      genericName: medicineForm.genericName.trim() || null,
-      manufacturer: medicineForm.manufacturer.trim() || null,
-      category: medicineForm.category,
-      composition: medicineForm.composition.trim() || null,
-      strength: medicineForm.strength.trim() || null,
-      packSize: Number(medicineForm.packSize),
-      packUnit: medicineForm.packUnit.trim(),
-      reorderLevel: Number(medicineForm.reorderLevel),
-      gstRate: Number(medicineForm.gstRate) || 0,
-      hsnCode: medicineForm.hsnCode.trim() || null,
-      rackLocation: medicineForm.rackLocation.trim() || null,
-      isScheduled: Boolean(medicineForm.isScheduled),
-      scheduleType: medicineForm.scheduleType || SCHEDULE_TYPE.NONE,
-    };
-
-    if (purchaseRaw === '') {
-      if (editingMedicine) payload.purchasePrice = null;
-    } else {
-      payload.purchasePrice = Number(purchaseRaw);
-    }
-    if (sellingRaw === '') {
-      if (editingMedicine) payload.sellingPrice = null;
-    } else {
-      payload.sellingPrice = Number(sellingRaw);
-    }
-
-    setFormLoading(true);
-    try {
-      if (editingMedicine) {
-        await medicineService.update(editingMedicine._id, payload);
-        toast.success('Medicine updated successfully!');
-      } else {
-        await medicineService.create(payload);
-        toast.success('Medicine added successfully!');
-      }
-      setShowAddMedicine(false);
-      setEditingMedicine(null);
-      setMedicineForm(getInitialMedicineForm());
-      fetchData();
-    } catch (error) {
-      toast.error(error.error || `Failed to ${editingMedicine ? 'update' : 'add'} medicine`);
-    } finally {
-      setFormLoading(false);
     }
   };
 
@@ -384,45 +261,9 @@ export default function MedicineStockManagement() {
     setShowAddStock(true);
   };
 
-  const openAddMedicineModal = () => {
-    setEditingMedicine(null);
-    setMedicineForm(getInitialMedicineForm());
-    setShowAddMedicine(true);
-  };
-
-  const openEditMedicine = (row) => {
-    setEditingMedicine(row);
-    setMedicineForm({
-      name: row.name || '',
-      genericName: row.genericName || '',
-      category: row.category || 'tablet',
-      manufacturer: row.manufacturer || '',
-      composition: row.composition || '',
-      strength: row.strength || '',
-      packSize: row.packSize ?? 10,
-      packUnit: row.packUnit || 'tablets',
-      reorderLevel: row.reorderLevel ?? 20,
-      gstRate: row.gstRate ?? 12,
-      hsnCode: row.hsnCode || '',
-      rackLocation: row.rackLocation || '',
-      isScheduled: Boolean(row.isScheduled),
-      scheduleType: row.scheduleType || SCHEDULE_TYPE.NONE,
-      purchasePrice: (() => {
-        const p = getMedicineRowPrices(row).purchase;
-        return p != null && p !== '' ? String(p) : '';
-      })(),
-      sellingPrice: (() => {
-        const s = getMedicineRowPrices(row).selling;
-        return s != null && s !== '' ? String(s) : '';
-      })(),
-    });
-    setShowAddMedicine(true);
-  };
-
-  const closeMedicineModal = () => {
-    setShowAddMedicine(false);
-    setEditingMedicine(null);
-    setMedicineForm(getInitialMedicineForm());
+  const openCatalogModal = (row = null) => {
+    setCatalogMedicine(row);
+    setCatalogModalOpen(true);
   };
 
   const medicineColumns = [
@@ -472,7 +313,7 @@ export default function MedicineStockManagement() {
       title: 'Actions',
       render: (_, row) => (
         <div className="flex items-center gap-2 flex-wrap">
-          <Button variant="ghost" size="sm" onClick={() => openEditMedicine(row)} icon={Pencil}>
+          <Button variant="ghost" size="sm" onClick={() => openCatalogModal(row)} icon={Pencil}>
             Edit
           </Button>
           <Button variant="ghost" size="sm" onClick={() => openAddStock(row)}>
@@ -547,7 +388,7 @@ export default function MedicineStockManagement() {
     {
       key: 'stockValue',
       title: 'Value at Risk',
-      render: (val) => <span className="font-medium">Γé╣{val?.toFixed(2)}</span>,
+      render: (val) => <span className="font-medium">₹{val?.toFixed(2)}</span>,
     },
   ];
 
@@ -560,7 +401,7 @@ export default function MedicineStockManagement() {
           <p className="text-gray-500">Manage medicines and inventory</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="secondary" onClick={openAddMedicineModal} icon={Plus}>
+          <Button variant="secondary" onClick={() => openCatalogModal()} icon={Plus}>
             Add Medicine
           </Button>
           <Button onClick={() => openAddStock()} icon={Plus}>
@@ -576,8 +417,10 @@ export default function MedicineStockManagement() {
             <Package className="w-6 h-6 text-blue-600" />
           </div>
           <div>
-            <p className="text-2xl font-bold">{medicines.length}</p>
-            <p className="text-sm text-gray-500">Total Medicines</p>
+            <p className="text-2xl font-bold">{searchQuery.trim() ? medicines.length : catalogTotal}</p>
+            <p className="text-sm text-gray-500">
+              {searchQuery.trim() ? 'Matching medicines' : 'Total Medicines'}
+            </p>
           </div>
         </Card>
         <Card className="p-4 flex items-center gap-4 cursor-pointer hover:shadow-md transition-shadow" onClick={() => setActiveTab('low')}>
@@ -655,141 +498,15 @@ export default function MedicineStockManagement() {
         }
       />
 
-      {/* Add Medicine Modal */}
-      <Modal
-        isOpen={showAddMedicine}
-        onClose={closeMedicineModal}
-        title={editingMedicine ? `Edit Medicine ΓÇö ${editingMedicine.medicineId}` : 'Add New Medicine'}
-        size="lg"
-      >
-        <form onSubmit={handleSaveMedicine} className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
-          <div className="grid grid-cols-2 gap-4">
-            <Input
-              label="Medicine Name"
-              value={medicineForm.name}
-              onChange={(e) => setMedicineForm((p) => ({ ...p, name: e.target.value }))}
-              required
-              placeholder="e.g., Paracetamol 500mg"
-            />
-            <Input
-              label="Generic Name"
-              value={medicineForm.genericName}
-              onChange={(e) => setMedicineForm((p) => ({ ...p, genericName: e.target.value }))}
-              placeholder="e.g., Paracetamol"
-            />
-            <Select
-              label="Category"
-              value={medicineForm.category}
-              onChange={(e) => setMedicineForm((p) => ({ ...p, category: e.target.value }))}
-              options={MEDICINE_CATEGORIES}
-              placeholder=""
-            />
-            <Input
-              label="Manufacturer"
-              value={medicineForm.manufacturer}
-              onChange={(e) => setMedicineForm((p) => ({ ...p, manufacturer: e.target.value }))}
-              placeholder="Company name"
-            />
-            <Input
-              label="Composition"
-              value={medicineForm.composition}
-              onChange={(e) => setMedicineForm((p) => ({ ...p, composition: e.target.value }))}
-              placeholder="e.g., Paracetamol 500mg"
-            />
-            <Input
-              label="Strength"
-              value={medicineForm.strength}
-              onChange={(e) => setMedicineForm((p) => ({ ...p, strength: e.target.value }))}
-              placeholder="e.g., 500mg"
-            />
-            <Input
-              label="HSN Code"
-              value={medicineForm.hsnCode}
-              onChange={(e) => setMedicineForm((p) => ({ ...p, hsnCode: e.target.value }))}
-              placeholder="GST HSN"
-            />
-            <Input
-              label="Rack location"
-              value={medicineForm.rackLocation}
-              onChange={(e) => setMedicineForm((p) => ({ ...p, rackLocation: e.target.value }))}
-              placeholder="Shelf / rack"
-            />
-            <Input
-              label="Pack Size"
-              type="number"
-              value={medicineForm.packSize}
-              onChange={(e) => setMedicineForm((p) => ({ ...p, packSize: e.target.value }))}
-              min="1"
-            />
-            <Input
-              label="Pack Unit"
-              value={medicineForm.packUnit}
-              onChange={(e) => setMedicineForm((p) => ({ ...p, packUnit: e.target.value }))}
-              placeholder="tablets, ml, etc."
-            />
-            <Input
-              label="Reorder Level"
-              type="number"
-              value={medicineForm.reorderLevel}
-              onChange={(e) => setMedicineForm((p) => ({ ...p, reorderLevel: e.target.value }))}
-              min="0"
-            />
-            <Input
-              label="GST Rate (%)"
-              type="number"
-              value={medicineForm.gstRate}
-              onChange={(e) => setMedicineForm((p) => ({ ...p, gstRate: e.target.value }))}
-              min="0"
-              max="28"
-            />
-            <Input
-              label="Default purchase price (Γé╣)"
-              type="number"
-              value={medicineForm.purchasePrice}
-              onChange={(e) => setMedicineForm((p) => ({ ...p, purchasePrice: e.target.value }))}
-              min="0"
-              step="0.01"
-              placeholder="Optional ΓÇö prefill when adding stock"
-            />
-            <Input
-              label="Default selling price (Γé╣)"
-              type="number"
-              value={medicineForm.sellingPrice}
-              onChange={(e) => setMedicineForm((p) => ({ ...p, sellingPrice: e.target.value }))}
-              min="0"
-              step="0.01"
-              placeholder="Optional ΓÇö prefill MRP / sale when adding stock"
-            />
-            <Select
-              label="Drug schedule"
-              value={medicineForm.scheduleType}
-              onChange={(e) => setMedicineForm((p) => ({ ...p, scheduleType: e.target.value }))}
-              options={SCHEDULE_TYPE_SELECT}
-              placeholder=""
-            />
-            <div className="col-span-2 flex items-center gap-2 pt-2">
-              <input
-                id="medicine-is-scheduled"
-                type="checkbox"
-                className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-                checked={medicineForm.isScheduled}
-                onChange={(e) => setMedicineForm((p) => ({ ...p, isScheduled: e.target.checked }))}
-              />
-              <label htmlFor="medicine-is-scheduled" className="text-sm text-gray-700">
-                Mark as scheduled drug
-              </label>
-            </div>
-          </div>
-          <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
-            <Button type="button" variant="secondary" onClick={closeMedicineModal}>
-              Cancel
-            </Button>
-            <Button type="submit" loading={formLoading}>
-              {editingMedicine ? 'Save changes' : 'Add Medicine'}
-            </Button>
-          </div>
-        </form>
-      </Modal>
+      <MedicineCatalogModal
+        isOpen={catalogModalOpen}
+        onClose={() => {
+          setCatalogModalOpen(false);
+          setCatalogMedicine(null);
+        }}
+        medicine={catalogMedicine}
+        onSaved={fetchData}
+      />
 
       {/* Add Stock Modal */}
       <Modal
@@ -856,7 +573,7 @@ export default function MedicineStockManagement() {
               onChange={(e) => setStockForm((p) => ({ ...p, mfgDate: e.target.value }))}
             />
             <Input
-              label="Purchase Price (Γé╣)"
+              label="Purchase Price (₹)"
               type="number"
               value={stockForm.purchasePrice}
               onChange={(e) => setStockForm((p) => ({ ...p, purchasePrice: e.target.value }))}
@@ -865,7 +582,7 @@ export default function MedicineStockManagement() {
               step="0.01"
             />
             <Input
-              label="MRP (Γé╣)"
+              label="MRP (₹)"
               type="number"
               value={stockForm.mrp}
               onChange={(e) => setStockForm((p) => ({ ...p, mrp: e.target.value }))}
@@ -874,7 +591,7 @@ export default function MedicineStockManagement() {
               step="0.01"
             />
             <Input
-              label="Selling Price (Γé╣)"
+              label="Selling Price (₹)"
               type="number"
               value={stockForm.sellingPrice}
               onChange={(e) => setStockForm((p) => ({ ...p, sellingPrice: e.target.value }))}

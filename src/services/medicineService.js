@@ -10,6 +10,49 @@ export const medicineService = {
     return api.get(`/medicine/getMedicines?${query}`);
   },
 
+  /** Total active medicines (from pagination metadata, no full list load). */
+  getCatalogTotal: async (params = {}) => {
+    const response = await medicineService.getAll({
+      ...params,
+      page: 1,
+      limit: 1,
+    });
+    return response.pagination?.total ?? response.medicines?.length ?? 0;
+  },
+
+  /** Fetch every page and merge (for admin views that need the full catalog). */
+  fetchAll: async (params = {}, pageSize = 200) => {
+    const all = [];
+    let page = 1;
+    let total = 0;
+
+    while (true) {
+      const response = await medicineService.getAll({
+        ...params,
+        page,
+        limit: pageSize,
+      });
+      const batch = response.medicines ?? [];
+      total = response.pagination?.total ?? total;
+      all.push(...batch);
+      if (!response.pagination?.hasNextPage || batch.length === 0) break;
+      page += 1;
+    }
+
+    return {
+      medicines: all,
+      total: total || all.length,
+      pagination: {
+        total: total || all.length,
+        page: 1,
+        limit: all.length,
+        totalPages: 1,
+        hasNextPage: false,
+        hasPrevPage: false,
+      },
+    };
+  },
+
   getById: async (id, includeStock = false) => {
     return api.get(`/medicine/getMedicineById?id=${id}&includeStock=${includeStock}`);
   },
