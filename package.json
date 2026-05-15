@@ -10,34 +10,11 @@
     "lint": "eslint src --ext js,jsx --report-unused-disable-directives --max-warnings 0",
     "netlify:dev": "netlify dev",
     "netlify:build": "netlify build",
-<<<<<<< HEAD
-    "migrate": "node scripts/migrate-legacy-data.js"
-  },
-  "dependencies": {
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "react-router-dom": "^6.20.1",
-    "@tanstack/react-query": "^5.12.2",
-    "axios": "^1.6.2",
-    "react-hook-form": "^7.48.2",
-    "@hookform/resolvers": "^3.3.2",
-    "zod": "^3.22.4",
-    "date-fns": "^2.30.0",
-    "lucide-react": "^0.294.0",
-    "clsx": "^2.0.0",
-    "tailwind-merge": "^2.1.0",
-    "react-to-print": "^2.14.15",
-    "react-hot-toast": "^2.4.1"
-  },
-  "devDependencies": {
-    "@vitejs/plugin-react": "^4.2.1",
-    "vite": "^5.0.7",
-    "tailwindcss": "^3.3.6",
-    "postcss": "^8.4.32",
-    "autoprefixer": "^10.4.16",
-=======
     "migrate": "node scripts/migrate-legacy-data.js",
-    "import:medicine-stock": "node scripts/import-medicine-stock-from-csv.mjs"
+    "import:medicine-stock": "node scripts/import-medicine-stock-from-csv.mjs",
+    "import:medicine-prices": "node scripts/import-medicine-prices-from-xlsx.mjs",
+    "import:medicine-prices:suggest": "node scripts/import-medicine-prices-from-xlsx.mjs --suggest-only",
+    "import:medicine-prices:missing": "node scripts/import-medicine-prices-from-xlsx.mjs --create-missing-medicines"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.3.2",
@@ -60,20 +37,15 @@
     "@vitejs/plugin-react": "^4.2.1",
     "autoprefixer": "^10.4.16",
     "csv-parse": "^5.6.0",
->>>>>>> ddeaf7c (sve)
     "eslint": "^8.55.0",
     "eslint-plugin-react": "^7.33.2",
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-react-refresh": "^0.4.5",
-<<<<<<< HEAD
-    "@netlify/functions": "^2.4.1",
-    "mongodb": "^6.3.0"
-=======
     "mongodb": "^6.3.0",
     "postcss": "^8.4.32",
     "tailwindcss": "^3.3.6",
-    "vite": "^5.0.7"
->>>>>>> ddeaf7c (sve)
+    "vite": "^5.0.7",
+    "xlsx": "^0.18.5"
   },
   "engines": {
     "node": ">=18.0.0"

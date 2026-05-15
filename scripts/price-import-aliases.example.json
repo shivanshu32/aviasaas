@@ -1,0 +1,8 @@
+{
+  "_comment": "Copy to price-import-aliases.json. Map Excel label → exact catalog name (or medicineId).",
+  "AQUAGEL": "EKRAN AQUA GEL 50G",
+  "EKRAN SOFT": "EKRAN SOFT GEL",
+  "HOMTASK EYE DROP": "HOMTEK EYE DROP 5ML",
+  "ASCORFT-HD": "ASCORIL HD",
+  "FROG SLLING L": "FROG SLING L"
+}
