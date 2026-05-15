@@ -15,6 +15,16 @@
  *     reorderLevel?: number,
  *     gstRate?: number,
  *     hsnCode?: string,
+<<<<<<< HEAD
+=======
+ *     composition?: string,
+ *     strength?: string,
+ *     rackLocation?: string,
+ *     isScheduled?: boolean,
+ *     scheduleType?: string,
+ *     purchasePrice?: number | null,
+ *     sellingPrice?: number | null,
+>>>>>>> ddeaf7c (sve)
  *     isActive?: boolean
  *   }
  * 
@@ -57,6 +67,7 @@ async function updateMedicine(event) {
 
   const allowedFields = [
     'name', 'genericName', 'category', 'manufacturer',
+<<<<<<< HEAD
     'packSize', 'packUnit', 'reorderLevel', 'gstRate',
     'hsnCode', 'isActive'
   ];
@@ -65,6 +76,55 @@ async function updateMedicine(event) {
     if (data[field] !== undefined) {
       updateFields[field] = data[field];
     }
+=======
+    'composition', 'strength', 'rackLocation',
+    'packSize', 'packUnit', 'reorderLevel', 'gstRate',
+    'hsnCode', 'isScheduled', 'scheduleType',
+    'purchasePrice', 'sellingPrice',
+    'isActive',
+  ];
+
+  const optionalNullableStrings = new Set([
+    'genericName', 'composition', 'strength', 'hsnCode', 'rackLocation', 'scheduleType',
+  ]);
+
+  for (const field of allowedFields) {
+    if (data[field] === undefined) continue;
+
+    if (field === 'isActive' || field === 'isScheduled') {
+      updateFields[field] = Boolean(data[field]);
+      continue;
+    }
+
+    if (field === 'purchasePrice' || field === 'sellingPrice') {
+      if (data[field] === null || data[field] === '') {
+        updateFields[field] = null;
+      } else {
+        const n = Number(data[field]);
+        if (Number.isNaN(n) || n < 0) {
+          return badRequest(`Invalid ${field}`);
+        }
+        updateFields[field] = n;
+      }
+      continue;
+    }
+
+    if (field === 'packSize' || field === 'reorderLevel' || field === 'gstRate') {
+      const n = Number(data[field]);
+      if (Number.isNaN(n)) {
+        return badRequest(`Invalid ${field}`);
+      }
+      updateFields[field] = n;
+      continue;
+    }
+
+    if (optionalNullableStrings.has(field) && (data[field] === '' || data[field] === null)) {
+      updateFields[field] = null;
+      continue;
+    }
+
+    updateFields[field] = data[field];
+>>>>>>> ddeaf7c (sve)
   }
 
   // Update medicine

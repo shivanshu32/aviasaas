@@ -19,7 +19,13 @@
  *     reorderLevel: number (required),
  *     rackLocation?: string,
  *     isScheduled?: boolean,
+<<<<<<< HEAD
  *     scheduleType?: string
+=======
+ *     scheduleType?: string,
+ *     purchasePrice?: number (optional catalog default; null if omitted),
+ *     sellingPrice?: number (optional catalog default; null if omitted)
+>>>>>>> ddeaf7c (sve)
  *   }
  * 
  * Response:
@@ -45,6 +51,23 @@ async function addMedicine(event) {
   if (!data.packUnit) return badRequest('Pack unit is required');
   if (data.reorderLevel === undefined) return badRequest('Reorder level is required');
 
+<<<<<<< HEAD
+=======
+  let purchasePrice = null;
+  if (data.purchasePrice !== undefined && data.purchasePrice !== null && data.purchasePrice !== '') {
+    const n = Number(data.purchasePrice);
+    if (Number.isNaN(n) || n < 0) return badRequest('Invalid purchase price');
+    purchasePrice = n;
+  }
+
+  let sellingPrice = null;
+  if (data.sellingPrice !== undefined && data.sellingPrice !== null && data.sellingPrice !== '') {
+    const n = Number(data.sellingPrice);
+    if (Number.isNaN(n) || n < 0) return badRequest('Invalid selling price');
+    sellingPrice = n;
+  }
+
+>>>>>>> ddeaf7c (sve)
   const db = await getDb();
   const collection = db.collection(COLLECTIONS.MEDICINES);
 
@@ -94,6 +117,11 @@ async function addMedicine(event) {
     rackLocation: data.rackLocation || null,
     isScheduled: data.isScheduled || false,
     scheduleType: data.scheduleType || 'none',
+<<<<<<< HEAD
+=======
+    purchasePrice,
+    sellingPrice,
+>>>>>>> ddeaf7c (sve)
     isActive: true,
     createdAt: now,
     updatedAt: now,

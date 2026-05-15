@@ -1,8 +1,16 @@
 import { useState, useEffect, useRef } from 'react';
+<<<<<<< HEAD
 import { Plus, Package, AlertTriangle, Clock, Search, Filter, X, Check } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Button, Input, Select, Card, Table, Modal, Badge } from '../../components/ui';
 import { medicineService } from '../../services';
+=======
+import { Plus, Package, AlertTriangle, Clock, Search, X, Check, Pencil } from 'lucide-react';
+import toast from 'react-hot-toast';
+import { Button, Input, Select, Card, Table, Modal, Badge } from '../../components/ui';
+import { medicineService } from '../../services';
+import { SCHEDULE_TYPE } from '@shared/constants/enums.js';
+>>>>>>> ddeaf7c (sve)
 
 // Medicine Search Component for Add Stock modal
 function MedicineSearch({ value, onChange, onSelect, selectedMedicine }) {
@@ -149,6 +157,37 @@ const MEDICINE_CATEGORIES = [
   { value: 'other', label: 'Other' },
 ];
 
+<<<<<<< HEAD
+=======
+const SCHEDULE_TYPE_SELECT = [
+  { value: SCHEDULE_TYPE.NONE, label: 'None' },
+  { value: SCHEDULE_TYPE.H, label: 'H' },
+  { value: SCHEDULE_TYPE.H1, label: 'H1' },
+  { value: SCHEDULE_TYPE.X, label: 'X' },
+];
+
+function getInitialMedicineForm() {
+  return {
+    name: '',
+    genericName: '',
+    category: 'tablet',
+    manufacturer: '',
+    composition: '',
+    strength: '',
+    packSize: 10,
+    packUnit: 'tablets',
+    reorderLevel: 20,
+    gstRate: 12,
+    hsnCode: '',
+    rackLocation: '',
+    isScheduled: false,
+    scheduleType: SCHEDULE_TYPE.NONE,
+    purchasePrice: '',
+    sellingPrice: '',
+  };
+}
+
+>>>>>>> ddeaf7c (sve)
 export default function MedicineStockManagement() {
   const [activeTab, setActiveTab] = useState('all');
   const [medicines, setMedicines] = useState([]);
@@ -159,10 +198,15 @@ export default function MedicineStockManagement() {
 
   // Modals
   const [showAddMedicine, setShowAddMedicine] = useState(false);
+<<<<<<< HEAD
+=======
+  const [editingMedicine, setEditingMedicine] = useState(null);
+>>>>>>> ddeaf7c (sve)
   const [showAddStock, setShowAddStock] = useState(false);
   const [selectedMedicine, setSelectedMedicine] = useState(null);
 
   // Form states
+<<<<<<< HEAD
   const [medicineForm, setMedicineForm] = useState({
     name: '',
     genericName: '',
@@ -173,6 +217,9 @@ export default function MedicineStockManagement() {
     reorderLevel: 20,
     gstRate: 12,
   });
+=======
+  const [medicineForm, setMedicineForm] = useState(() => getInitialMedicineForm());
+>>>>>>> ddeaf7c (sve)
 
   const [stockForm, setStockForm] = useState({
     medicineId: '',
@@ -192,15 +239,43 @@ export default function MedicineStockManagement() {
     fetchData();
   }, [activeTab, searchQuery]);
 
+<<<<<<< HEAD
+=======
+  const fetchAllMedicinesWithStock = async (search) => {
+    const pageSize = 200;
+    const all = [];
+    let page = 1;
+    while (true) {
+      const response = await medicineService.getAll({
+        search,
+        includeStock: 'true',
+        page,
+        limit: pageSize,
+      });
+      const batch = response.medicines ?? [];
+      all.push(...batch);
+      const pag = response.pagination;
+      if (!pag?.hasNextPage || batch.length === 0) break;
+      page += 1;
+    }
+    return all;
+  };
+
+>>>>>>> ddeaf7c (sve)
   const fetchData = async () => {
     setLoading(true);
     try {
       if (activeTab === 'all') {
+<<<<<<< HEAD
         const response = await medicineService.getAll({
           search: searchQuery,
           includeStock: 'true',
         });
         setMedicines(response.medicines || []);
+=======
+        const merged = await fetchAllMedicinesWithStock(searchQuery);
+        setMedicines(merged);
+>>>>>>> ddeaf7c (sve)
       } else if (activeTab === 'low') {
         const response = await medicineService.stock.getLowStock();
         setLowStock(response.lowStockItems || []);
@@ -215,6 +290,7 @@ export default function MedicineStockManagement() {
     }
   };
 
+<<<<<<< HEAD
   const handleAddMedicine = async (e) => {
     e.preventDefault();
     setFormLoading(true);
@@ -235,6 +311,72 @@ export default function MedicineStockManagement() {
       fetchData();
     } catch (error) {
       toast.error(error.error || 'Failed to add medicine');
+=======
+  const handleSaveMedicine = async (e) => {
+    e.preventDefault();
+
+    const purchaseRaw = medicineForm.purchasePrice;
+    const sellingRaw = medicineForm.sellingPrice;
+
+    if (purchaseRaw !== '') {
+      const n = Number(purchaseRaw);
+      if (Number.isNaN(n) || n < 0) {
+        toast.error('Invalid purchase price');
+        return;
+      }
+    }
+    if (sellingRaw !== '') {
+      const n = Number(sellingRaw);
+      if (Number.isNaN(n) || n < 0) {
+        toast.error('Invalid selling price');
+        return;
+      }
+    }
+
+    const payload = {
+      name: medicineForm.name.trim(),
+      genericName: medicineForm.genericName.trim() || null,
+      manufacturer: medicineForm.manufacturer.trim() || null,
+      category: medicineForm.category,
+      composition: medicineForm.composition.trim() || null,
+      strength: medicineForm.strength.trim() || null,
+      packSize: Number(medicineForm.packSize),
+      packUnit: medicineForm.packUnit.trim(),
+      reorderLevel: Number(medicineForm.reorderLevel),
+      gstRate: Number(medicineForm.gstRate) || 0,
+      hsnCode: medicineForm.hsnCode.trim() || null,
+      rackLocation: medicineForm.rackLocation.trim() || null,
+      isScheduled: Boolean(medicineForm.isScheduled),
+      scheduleType: medicineForm.scheduleType || SCHEDULE_TYPE.NONE,
+    };
+
+    if (purchaseRaw === '') {
+      if (editingMedicine) payload.purchasePrice = null;
+    } else {
+      payload.purchasePrice = Number(purchaseRaw);
+    }
+    if (sellingRaw === '') {
+      if (editingMedicine) payload.sellingPrice = null;
+    } else {
+      payload.sellingPrice = Number(sellingRaw);
+    }
+
+    setFormLoading(true);
+    try {
+      if (editingMedicine) {
+        await medicineService.update(editingMedicine._id, payload);
+        toast.success('Medicine updated successfully!');
+      } else {
+        await medicineService.create(payload);
+        toast.success('Medicine added successfully!');
+      }
+      setShowAddMedicine(false);
+      setEditingMedicine(null);
+      setMedicineForm(getInitialMedicineForm());
+      fetchData();
+    } catch (error) {
+      toast.error(error.error || `Failed to ${editingMedicine ? 'update' : 'add'} medicine`);
+>>>>>>> ddeaf7c (sve)
     } finally {
       setFormLoading(false);
     }
@@ -282,11 +424,73 @@ export default function MedicineStockManagement() {
   const openAddStock = (medicine = null) => {
     if (medicine) {
       setSelectedMedicine(medicine);
+<<<<<<< HEAD
       setStockForm((prev) => ({ ...prev, medicineId: medicine._id }));
+=======
+      const selling =
+        medicine.sellingPrice != null && medicine.sellingPrice !== ''
+          ? String(medicine.sellingPrice)
+          : '';
+      const purchase =
+        medicine.purchasePrice != null && medicine.purchasePrice !== ''
+          ? String(medicine.purchasePrice)
+          : '';
+      setStockForm((prev) => ({
+        ...prev,
+        medicineId: medicine._id,
+        purchasePrice: purchase,
+        sellingPrice: selling,
+        mrp: selling,
+      }));
+>>>>>>> ddeaf7c (sve)
     }
     setShowAddStock(true);
   };
 
+<<<<<<< HEAD
+=======
+  const openAddMedicineModal = () => {
+    setEditingMedicine(null);
+    setMedicineForm(getInitialMedicineForm());
+    setShowAddMedicine(true);
+  };
+
+  const openEditMedicine = (row) => {
+    setEditingMedicine(row);
+    setMedicineForm({
+      name: row.name || '',
+      genericName: row.genericName || '',
+      category: row.category || 'tablet',
+      manufacturer: row.manufacturer || '',
+      composition: row.composition || '',
+      strength: row.strength || '',
+      packSize: row.packSize ?? 10,
+      packUnit: row.packUnit || 'tablets',
+      reorderLevel: row.reorderLevel ?? 20,
+      gstRate: row.gstRate ?? 12,
+      hsnCode: row.hsnCode || '',
+      rackLocation: row.rackLocation || '',
+      isScheduled: Boolean(row.isScheduled),
+      scheduleType: row.scheduleType || SCHEDULE_TYPE.NONE,
+      purchasePrice:
+        row.purchasePrice != null && row.purchasePrice !== ''
+          ? String(row.purchasePrice)
+          : '',
+      sellingPrice:
+        row.sellingPrice != null && row.sellingPrice !== ''
+          ? String(row.sellingPrice)
+          : '',
+    });
+    setShowAddMedicine(true);
+  };
+
+  const closeMedicineModal = () => {
+    setShowAddMedicine(false);
+    setEditingMedicine(null);
+    setMedicineForm(getInitialMedicineForm());
+  };
+
+>>>>>>> ddeaf7c (sve)
   const medicineColumns = [
     {
       key: 'name',
@@ -323,9 +527,20 @@ export default function MedicineStockManagement() {
       key: 'actions',
       title: 'Actions',
       render: (_, row) => (
+<<<<<<< HEAD
         <Button variant="ghost" size="sm" onClick={() => openAddStock(row)}>
           Add Stock
         </Button>
+=======
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button variant="ghost" size="sm" onClick={() => openEditMedicine(row)} icon={Pencil}>
+            Edit
+          </Button>
+          <Button variant="ghost" size="sm" onClick={() => openAddStock(row)}>
+            Add Stock
+          </Button>
+        </div>
+>>>>>>> ddeaf7c (sve)
       ),
     },
   ];
@@ -407,7 +622,11 @@ export default function MedicineStockManagement() {
           <p className="text-gray-500">Manage medicines and inventory</p>
         </div>
         <div className="flex gap-2">
+<<<<<<< HEAD
           <Button variant="secondary" onClick={() => setShowAddMedicine(true)} icon={Plus}>
+=======
+          <Button variant="secondary" onClick={openAddMedicineModal} icon={Plus}>
+>>>>>>> ddeaf7c (sve)
             Add Medicine
           </Button>
           <Button onClick={() => openAddStock()} icon={Plus}>
@@ -505,11 +724,19 @@ export default function MedicineStockManagement() {
       {/* Add Medicine Modal */}
       <Modal
         isOpen={showAddMedicine}
+<<<<<<< HEAD
         onClose={() => setShowAddMedicine(false)}
         title="Add New Medicine"
         size="lg"
       >
         <form onSubmit={handleAddMedicine} className="space-y-4">
+=======
+        onClose={closeMedicineModal}
+        title={editingMedicine ? `Edit Medicine — ${editingMedicine.medicineId}` : 'Add New Medicine'}
+        size="lg"
+      >
+        <form onSubmit={handleSaveMedicine} className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
+>>>>>>> ddeaf7c (sve)
           <div className="grid grid-cols-2 gap-4">
             <Input
               label="Medicine Name"
@@ -529,6 +756,10 @@ export default function MedicineStockManagement() {
               value={medicineForm.category}
               onChange={(e) => setMedicineForm((p) => ({ ...p, category: e.target.value }))}
               options={MEDICINE_CATEGORIES}
+<<<<<<< HEAD
+=======
+              placeholder=""
+>>>>>>> ddeaf7c (sve)
             />
             <Input
               label="Manufacturer"
@@ -537,6 +768,33 @@ export default function MedicineStockManagement() {
               placeholder="Company name"
             />
             <Input
+<<<<<<< HEAD
+=======
+              label="Composition"
+              value={medicineForm.composition}
+              onChange={(e) => setMedicineForm((p) => ({ ...p, composition: e.target.value }))}
+              placeholder="e.g., Paracetamol 500mg"
+            />
+            <Input
+              label="Strength"
+              value={medicineForm.strength}
+              onChange={(e) => setMedicineForm((p) => ({ ...p, strength: e.target.value }))}
+              placeholder="e.g., 500mg"
+            />
+            <Input
+              label="HSN Code"
+              value={medicineForm.hsnCode}
+              onChange={(e) => setMedicineForm((p) => ({ ...p, hsnCode: e.target.value }))}
+              placeholder="GST HSN"
+            />
+            <Input
+              label="Rack location"
+              value={medicineForm.rackLocation}
+              onChange={(e) => setMedicineForm((p) => ({ ...p, rackLocation: e.target.value }))}
+              placeholder="Shelf / rack"
+            />
+            <Input
+>>>>>>> ddeaf7c (sve)
               label="Pack Size"
               type="number"
               value={medicineForm.packSize}
@@ -564,6 +822,7 @@ export default function MedicineStockManagement() {
               min="0"
               max="28"
             />
+<<<<<<< HEAD
           </div>
           <div className="flex justify-end gap-3 pt-4">
             <Button type="button" variant="secondary" onClick={() => setShowAddMedicine(false)}>
@@ -571,6 +830,52 @@ export default function MedicineStockManagement() {
             </Button>
             <Button type="submit" loading={formLoading}>
               Add Medicine
+=======
+            <Input
+              label="Default purchase price (₹)"
+              type="number"
+              value={medicineForm.purchasePrice}
+              onChange={(e) => setMedicineForm((p) => ({ ...p, purchasePrice: e.target.value }))}
+              min="0"
+              step="0.01"
+              placeholder="Optional — prefill when adding stock"
+            />
+            <Input
+              label="Default selling price (₹)"
+              type="number"
+              value={medicineForm.sellingPrice}
+              onChange={(e) => setMedicineForm((p) => ({ ...p, sellingPrice: e.target.value }))}
+              min="0"
+              step="0.01"
+              placeholder="Optional — prefill MRP / sale when adding stock"
+            />
+            <Select
+              label="Drug schedule"
+              value={medicineForm.scheduleType}
+              onChange={(e) => setMedicineForm((p) => ({ ...p, scheduleType: e.target.value }))}
+              options={SCHEDULE_TYPE_SELECT}
+              placeholder=""
+            />
+            <div className="col-span-2 flex items-center gap-2 pt-2">
+              <input
+                id="medicine-is-scheduled"
+                type="checkbox"
+                className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                checked={medicineForm.isScheduled}
+                onChange={(e) => setMedicineForm((p) => ({ ...p, isScheduled: e.target.checked }))}
+              />
+              <label htmlFor="medicine-is-scheduled" className="text-sm text-gray-700">
+                Mark as scheduled drug
+              </label>
+            </div>
+          </div>
+          <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
+            <Button type="button" variant="secondary" onClick={closeMedicineModal}>
+              Cancel
+            </Button>
+            <Button type="submit" loading={formLoading}>
+              {editingMedicine ? 'Save changes' : 'Add Medicine'}
+>>>>>>> ddeaf7c (sve)
             </Button>
           </div>
         </form>
@@ -594,7 +899,25 @@ export default function MedicineStockManagement() {
             onSelect={(medicine) => {
               if (medicine) {
                 setSelectedMedicine(medicine);
+<<<<<<< HEAD
                 setStockForm((p) => ({ ...p, medicineId: medicine._id }));
+=======
+                const selling =
+                  medicine.sellingPrice != null && medicine.sellingPrice !== ''
+                    ? String(medicine.sellingPrice)
+                    : '';
+                const purchase =
+                  medicine.purchasePrice != null && medicine.purchasePrice !== ''
+                    ? String(medicine.purchasePrice)
+                    : '';
+                setStockForm((p) => ({
+                  ...p,
+                  medicineId: medicine._id,
+                  purchasePrice: purchase,
+                  sellingPrice: selling,
+                  mrp: selling,
+                }));
+>>>>>>> ddeaf7c (sve)
               } else {
                 setSelectedMedicine(null);
                 setStockForm((p) => ({ ...p, medicineId: '' }));

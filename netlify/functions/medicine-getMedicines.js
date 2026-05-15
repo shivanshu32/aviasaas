@@ -28,7 +28,13 @@ async function getMedicines(event) {
   } = event.query;
 
   const pageNum = Math.max(1, parseInt(page, 10) || 1);
+<<<<<<< HEAD
   const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10) || 50));
+=======
+  // Cap raised for admin inventory UIs that list the full catalog (was 100, default 50).
+  const MAX_PAGE = 2000;
+  const limitNum = Math.min(MAX_PAGE, Math.max(1, parseInt(limit, 10) || 50));
+>>>>>>> ddeaf7c (sve)
   const skip = (pageNum - 1) * limitNum;
 
   const db = await getDb();
