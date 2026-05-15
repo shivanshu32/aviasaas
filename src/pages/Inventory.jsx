@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Search, AlertTriangle, Package, Clock, Loader2, PackageX } from 'lucide-react';
 import { medicineService } from '../services';
+import { formatMedicinePrice, getMedicineRowPrices } from '../utils/medicinePrice';
 
 export default function Inventory() {
   const [tab, setTab] = useState('medicines');
@@ -262,7 +263,8 @@ export default function Inventory() {
                 <th>Medicine</th>
                 <th>Category</th>
                 <th>Stock</th>
-                <th>MRP</th>
+                <th>Purchase</th>
+                <th>Sale / MRP</th>
                 <th>Expiry</th>
                 <th>Status</th>
                 <th>Actions</th>
@@ -285,7 +287,8 @@ export default function Inventory() {
                     <td className={status.class.includes('warning') || status.class.includes('danger') ? 'text-orange-600 font-medium' : ''}>
                       {med.currentStock || 0} {med.unit || 'units'}
                     </td>
-                    <td>₹{med.mrp?.toFixed(2) || '-'}</td>
+                    <td>{formatMedicinePrice(getMedicineRowPrices(med).purchase)}</td>
+                    <td>{formatMedicinePrice(getMedicineRowPrices(med).selling)}</td>
                     <td>
                       <div>
                         <span className={expiryStatus?.class || 'text-gray-500'}>

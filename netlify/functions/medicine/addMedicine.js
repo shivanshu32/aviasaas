@@ -1,35 +1,6 @@
 /**
  * Add Medicine API
- * Add a new medicine to the catalog
- * 
  * Endpoint: POST /.netlify/functions/medicine-addMedicine
- * 
- * Request Body:
- *   {
- *     name: string (required),
- *     genericName?: string,
- *     manufacturer?: string,
- *     category: string (required),
- *     composition?: string,
- *     strength?: string,
- *     packSize: number (required),
- *     packUnit: string (required),
- *     hsnCode?: string,
- *     gstRate?: number,
- *     reorderLevel: number (required),
- *     rackLocation?: string,
- *     isScheduled?: boolean,
-<<<<<<< HEAD
- *     scheduleType?: string
-=======
- *     scheduleType?: string,
- *     purchasePrice?: number (optional catalog default; null if omitted),
- *     sellingPrice?: number (optional catalog default; null if omitted)
->>>>>>> ddeaf7c (sve)
- *   }
- * 
- * Response:
- *   { success: true, message: string, medicine: Object }
  */
 
 import { ObjectId } from 'mongodb';
@@ -44,15 +15,12 @@ async function addMedicine(event) {
 
   const data = event.parsedBody || {};
 
-  // Validate required fields
   if (!data.name) return badRequest('Medicine name is required');
   if (!data.category) return badRequest('Category is required');
   if (!data.packSize) return badRequest('Pack size is required');
   if (!data.packUnit) return badRequest('Pack unit is required');
   if (data.reorderLevel === undefined) return badRequest('Reorder level is required');
 
-<<<<<<< HEAD
-=======
   let purchasePrice = null;
   if (data.purchasePrice !== undefined && data.purchasePrice !== null && data.purchasePrice !== '') {
     const n = Number(data.purchasePrice);
@@ -67,11 +35,9 @@ async function addMedicine(event) {
     sellingPrice = n;
   }
 
->>>>>>> ddeaf7c (sve)
   const db = await getDb();
   const collection = db.collection(COLLECTIONS.MEDICINES);
 
-  // Check for duplicate medicine name
   const existing = await collection.findOne({
     name: { $regex: new RegExp(`^${data.name}$`, 'i') },
     isActive: true,
@@ -81,7 +47,6 @@ async function addMedicine(event) {
     return conflict('Medicine with this name already exists');
   }
 
-  // Generate medicine ID
   const lastMedicine = await collection
     .find({})
     .sort({ medicineId: -1 })
@@ -98,7 +63,6 @@ async function addMedicine(event) {
   }
   const medicineId = `MED-${String(nextNum).padStart(4, '0')}`;
 
-  // Create medicine document
   const now = new Date();
   const medicine = {
     _id: new ObjectId(),
@@ -117,11 +81,8 @@ async function addMedicine(event) {
     rackLocation: data.rackLocation || null,
     isScheduled: data.isScheduled || false,
     scheduleType: data.scheduleType || 'none',
-<<<<<<< HEAD
-=======
     purchasePrice,
     sellingPrice,
->>>>>>> ddeaf7c (sve)
     isActive: true,
     createdAt: now,
     updatedAt: now,
@@ -129,10 +90,7 @@ async function addMedicine(event) {
 
   await collection.insertOne(medicine);
 
-  return created(
-    { medicine },
-    'Medicine added successfully'
-  );
+  return created({ medicine }, 'Medicine added successfully');
 }
 
 export const handler = withErrorHandler(addMedicine);

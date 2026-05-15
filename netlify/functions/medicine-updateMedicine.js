@@ -1,35 +1,7 @@
 /**
  * Update Medicine API
- * 
+ *
  * Endpoint: PUT /.netlify/functions/medicine-updateMedicine
- * 
- * Request Body:
- *   {
- *     id: string (required),
- *     name?: string,
- *     genericName?: string,
- *     category?: string,
- *     manufacturer?: string,
- *     packSize?: number,
- *     packUnit?: string,
- *     reorderLevel?: number,
- *     gstRate?: number,
- *     hsnCode?: string,
-<<<<<<< HEAD
-=======
- *     composition?: string,
- *     strength?: string,
- *     rackLocation?: string,
- *     isScheduled?: boolean,
- *     scheduleType?: string,
- *     purchasePrice?: number | null,
- *     sellingPrice?: number | null,
->>>>>>> ddeaf7c (sve)
- *     isActive?: boolean
- *   }
- * 
- * Response:
- *   { success: true, message: string, medicine: Object }
  */
 
 import { ObjectId } from 'mongodb';
@@ -50,7 +22,6 @@ async function updateMedicine(event) {
 
   const db = await getDb();
 
-  // Find medicine
   const query = ObjectId.isValid(data.id)
     ? { _id: new ObjectId(data.id) }
     : { medicineId: data.id };
@@ -60,23 +31,12 @@ async function updateMedicine(event) {
     return notFound('Medicine');
   }
 
-  // Build update object
   const updateFields = {
     updatedAt: new Date(),
   };
 
   const allowedFields = [
     'name', 'genericName', 'category', 'manufacturer',
-<<<<<<< HEAD
-    'packSize', 'packUnit', 'reorderLevel', 'gstRate',
-    'hsnCode', 'isActive'
-  ];
-
-  for (const field of allowedFields) {
-    if (data[field] !== undefined) {
-      updateFields[field] = data[field];
-    }
-=======
     'composition', 'strength', 'rackLocation',
     'packSize', 'packUnit', 'reorderLevel', 'gstRate',
     'hsnCode', 'isScheduled', 'scheduleType',
@@ -124,20 +84,15 @@ async function updateMedicine(event) {
     }
 
     updateFields[field] = data[field];
->>>>>>> ddeaf7c (sve)
   }
 
-  // Update medicine
   const result = await db.collection(COLLECTIONS.MEDICINES).findOneAndUpdate(
     { _id: medicine._id },
     { $set: updateFields },
-    { returnDocument: 'after' }
+    { returnDocument: 'after' },
   );
 
-  return success(
-    { medicine: result },
-    'Medicine updated successfully'
-  );
+  return success({ medicine: result }, 'Medicine updated successfully');
 }
 
 export const handler = withErrorHandler(updateMedicine);

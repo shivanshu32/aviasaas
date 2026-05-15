@@ -1,22 +1,17 @@
 /**
  * Get Medicines API
  * List medicines with search and pagination
- * 
+ *
  * Endpoint: GET /.netlify/functions/medicine-getMedicines
- * 
- * Query Parameters:
- *   - search: Search by name or generic name
- *   - category: Filter by category
- *   - page, limit: Pagination
- *   - includeStock: Include current stock info (true/false)
- * 
- * Response:
- *   { success: true, medicines: [...], pagination: {...} }
  */
 
 import { getDb, COLLECTIONS } from './utils/db.js';
 import { paginated } from './utils/response.js';
 import { withErrorHandler } from './utils/errorHandler.js';
+import {
+  enrichMedicinesWithPrices,
+  STOCK_PRICE_GROUP_FIELDS,
+} from './utils/medicinePriceFields.js';
 
 async function getMedicines(event) {
   const {
@@ -28,19 +23,13 @@ async function getMedicines(event) {
   } = event.query;
 
   const pageNum = Math.max(1, parseInt(page, 10) || 1);
-<<<<<<< HEAD
-  const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10) || 50));
-=======
-  // Cap raised for admin inventory UIs that list the full catalog (was 100, default 50).
   const MAX_PAGE = 2000;
   const limitNum = Math.min(MAX_PAGE, Math.max(1, parseInt(limit, 10) || 50));
->>>>>>> ddeaf7c (sve)
   const skip = (pageNum - 1) * limitNum;
 
   const db = await getDb();
   const filter = { isActive: true };
 
-  // Search filter
   if (search.trim()) {
     const searchRegex = new RegExp(search.trim(), 'i');
     filter.$or = [
@@ -50,7 +39,6 @@ async function getMedicines(event) {
     ];
   }
 
-  // Category filter
   if (category) {
     filter.category = category;
   }
@@ -59,7 +47,6 @@ async function getMedicines(event) {
   let total;
 
   if (includeStock === 'true') {
-    // Aggregation to include stock info
     const pipeline = [
       { $match: filter },
       { $sort: { name: 1 } },
@@ -80,8 +67,7 @@ async function getMedicines(event) {
             {
               $group: {
                 _id: null,
-                totalStock: { $sum: '$currentQty' },
-                batches: { $push: { batchNo: '$batchNo', qty: '$currentQty', expiry: '$expiryDate' } },
+                ...STOCK_PRICE_GROUP_FIELDS,
               },
             },
           ],
@@ -96,6 +82,9 @@ async function getMedicines(event) {
           stockBatches: {
             $ifNull: [{ $arrayElemAt: ['$stockInfo.batches', 0] }, []],
           },
+          batchMrp: { $arrayElemAt: ['$stockInfo.batchMrp', 0] },
+          batchSellingPrice: { $arrayElemAt: ['$stockInfo.batchSellingPrice', 0] },
+          batchPurchasePrice: { $arrayElemAt: ['$stockInfo.batchPurchasePrice', 0] },
         },
       },
       { $project: { stockInfo: 0 } },
@@ -105,6 +94,7 @@ async function getMedicines(event) {
       db.collection(COLLECTIONS.MEDICINES).aggregate(pipeline).toArray(),
       db.collection(COLLECTIONS.MEDICINES).countDocuments(filter),
     ]);
+    medicines = enrichMedicinesWithPrices(medicines);
   } else {
     [medicines, total] = await Promise.all([
       db.collection(COLLECTIONS.MEDICINES)
@@ -115,6 +105,7 @@ async function getMedicines(event) {
         .toArray(),
       db.collection(COLLECTIONS.MEDICINES).countDocuments(filter),
     ]);
+    medicines = enrichMedicinesWithPrices(medicines);
   }
 
   return paginated({

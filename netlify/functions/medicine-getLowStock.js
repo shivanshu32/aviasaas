@@ -11,6 +11,7 @@
 import { getDb, COLLECTIONS } from './utils/db.js';
 import { success } from './utils/response.js';
 import { withErrorHandler } from './utils/errorHandler.js';
+import { enrichMedicinesWithPrices } from './utils/medicinePriceFields.js';
 
 async function getLowStock(event) {
   const db = await getDb();
@@ -58,6 +59,8 @@ async function getLowStock(event) {
         packUnit: '$medicine.packUnit',
         currentStock: '$totalStock',
         reorderLevel: '$medicine.reorderLevel',
+        purchasePrice: '$medicine.purchasePrice',
+        sellingPrice: '$medicine.sellingPrice',
         deficit: { $subtract: ['$medicine.reorderLevel', '$totalStock'] },
       },
     },
@@ -84,6 +87,8 @@ async function getLowStock(event) {
       category: 1,
       packUnit: 1,
       reorderLevel: 1,
+      purchasePrice: 1,
+      sellingPrice: 1,
     })
     .toArray();
 
@@ -94,8 +99,9 @@ async function getLowStock(event) {
   }));
 
   // Combine and sort
-  const allLowStock = [...lowStockItems, ...zeroStockItems]
-    .sort((a, b) => b.deficit - a.deficit);
+  const allLowStock = enrichMedicinesWithPrices(
+    [...lowStockItems, ...zeroStockItems].sort((a, b) => b.deficit - a.deficit),
+  );
 
   return success({
     lowStockItems: allLowStock,
