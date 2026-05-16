@@ -14,7 +14,9 @@
     "import:medicine-stock": "node scripts/import-medicine-stock-from-csv.mjs",
     "import:medicine-prices": "node scripts/import-medicine-prices-from-xlsx.mjs",
     "import:medicine-prices:suggest": "node scripts/import-medicine-prices-from-xlsx.mjs --suggest-only",
-    "import:medicine-prices:missing": "node scripts/import-medicine-prices-from-xlsx.mjs --create-missing-medicines"
+    "import:medicine-prices:missing": "node scripts/import-medicine-prices-from-xlsx.mjs --create-missing-medicines",
+    "import:medicine-stock-list": "node scripts/replace-medicine-stock-from-list.mjs",
+    "import:medicine-stock-list:dry-run": "node scripts/replace-medicine-stock-from-list.mjs --dry-run"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.3.2",

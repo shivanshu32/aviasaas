@@ -5,6 +5,7 @@ import { Button, Input, Card, Table, Modal, Badge } from '../../components/ui';
 import { medicineService } from '../../services';
 import { formatMedicinePrice, getMedicineRowPrices } from '../../utils/medicinePrice';
 import MedicineCatalogModal from '../../components/inventory/MedicineCatalogModal';
+import MedicineDeleteButton from '../../components/inventory/MedicineDeleteButton';
 
 // Medicine Search Component for Add Stock modal
 function MedicineSearch({ value, onChange, onSelect, selectedMedicine }) {
@@ -319,6 +320,11 @@ export default function MedicineStockManagement() {
           <Button variant="ghost" size="sm" onClick={() => openAddStock(row)}>
             Add Stock
           </Button>
+          <MedicineDeleteButton
+            medicine={row}
+            variant="button"
+            onDeleted={fetchData}
+          />
         </div>
       ),
     },

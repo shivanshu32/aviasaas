@@ -15,6 +15,7 @@ import {
 import { medicineService } from '../services';
 import { formatMedicinePrice, getMedicineRowPrices } from '../utils/medicinePrice';
 import MedicineCatalogModal from '../components/inventory/MedicineCatalogModal';
+import MedicineDeleteButton from '../components/inventory/MedicineDeleteButton';
 
 const PAGE_SIZE = 50;
 
@@ -385,6 +386,13 @@ export default function Inventory() {
                             >
                               Add Stock
                             </Link>
+                            <MedicineDeleteButton
+                              medicine={med}
+                              onDeleted={() => {
+                                fetchMedicines();
+                                fetchStats();
+                              }}
+                            />
                           </div>
                         </td>
                       </tr>

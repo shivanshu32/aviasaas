@@ -65,6 +65,10 @@ export const medicineService = {
     return api.put('/medicine/updateMedicine', { id, ...data });
   },
 
+  delete: async (id) => {
+    return api.delete(`/medicine/deleteMedicine?id=${id}`);
+  },
+
   // Stock
   stock: {
     getCurrent: async (medicineId) => {
