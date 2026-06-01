@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { Plus, FileText, FlaskConical, Pill, Search, Eye, Printer, Calendar, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
+import { Plus, FileText, FlaskConical, Pill, Search, Eye, Printer, Pencil, Calendar, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { billingService } from '../services';
 
@@ -339,6 +339,15 @@ export default function Billing() {
                       >
                         <Printer className="w-4 h-4" />
                       </Link>
+                      {type === 'medicine' && (
+                        <Link
+                          to={`/billing/medicine/edit/${bill._id}`}
+                          className="p-1.5 text-amber-600 hover:bg-amber-50 rounded"
+                          title="Edit"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </Link>
+                      )}
                     </div>
                   </td>
                 </tr>

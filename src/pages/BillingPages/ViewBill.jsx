@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Printer, Loader2, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Printer, Loader2, AlertCircle, Pencil } from 'lucide-react';
 import { useReactToPrint } from 'react-to-print';
 import { Button } from '../../components/ui';
 import { billingService } from '../../services';
@@ -121,9 +121,20 @@ export default function ViewBill() {
             <p className="text-gray-500">Bill No: {bill?.billNo}</p>
           </div>
         </div>
-        <Button onClick={handlePrint} icon={Printer}>
-          Print Bill
-        </Button>
+        <div className="flex gap-2">
+          {type === 'medicine' && (
+            <Button
+              variant="secondary"
+              onClick={() => navigate(`/billing/medicine/edit/${id}`)}
+              icon={Pencil}
+            >
+              Edit Bill
+            </Button>
+          )}
+          <Button onClick={handlePrint} icon={Printer}>
+            Print Bill
+          </Button>
+        </div>
       </div>
 
       {/* Bill Preview */}

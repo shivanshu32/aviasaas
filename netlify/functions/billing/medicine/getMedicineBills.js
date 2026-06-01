@@ -18,6 +18,7 @@ import { ObjectId } from 'mongodb';
 import { getDb, COLLECTIONS } from '../../utils/db.js';
 import { paginated } from '../../utils/response.js';
 import { withErrorHandler } from '../../utils/errorHandler.js';
+import { startOfLocalDay, endOfLocalDay } from '../../../../shared/utils/billDate.js';
 
 async function getMedicineBills(event) {
   const {
@@ -43,14 +44,15 @@ async function getMedicineBills(event) {
       : patientId;
   }
 
-  // Date range filter
   if (dateFrom || dateTo) {
     filter.billDate = {};
-    if (dateFrom) filter.billDate.$gte = new Date(dateFrom);
+    if (dateFrom) {
+      const from = startOfLocalDay(dateFrom);
+      if (from) filter.billDate.$gte = from;
+    }
     if (dateTo) {
-      const endDate = new Date(dateTo);
-      endDate.setHours(23, 59, 59, 999);
-      filter.billDate.$lte = endDate;
+      const to = endOfLocalDay(dateTo);
+      if (to) filter.billDate.$lte = to;
     }
   }
 

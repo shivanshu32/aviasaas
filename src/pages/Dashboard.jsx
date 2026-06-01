@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { patientService, appointmentService, billingService, medicineService } from '../services';
+import { getLocalDateInputString } from '../utils/billDate';
 
 export default function Dashboard() {
   const [loading, setLoading] = useState(true);
@@ -45,14 +46,14 @@ export default function Dashboard() {
   const fetchDashboardData = async () => {
     setLoading(true);
     try {
-      const today = new Date().toISOString().split('T')[0];
+      const today = getLocalDateInputString();
       
       // Fetch all data in parallel
       const [patientsRes, appointmentsRes, opdBillsRes, medicineBillsRes, lowStockRes] = await Promise.all([
         patientService.getAll({ limit: 1 }),
         appointmentService.getAll({ date: today, limit: 50 }),
         billingService.opd.getAll({ startDate: today, endDate: today }),
-        billingService.medicine.getAll({ startDate: today, endDate: today }),
+        billingService.medicine.getAll({ dateFrom: today, dateTo: today }),
         medicineService.stock.getLowStock(),
       ]);
 

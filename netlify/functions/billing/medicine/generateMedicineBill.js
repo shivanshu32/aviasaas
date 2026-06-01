@@ -34,6 +34,11 @@ import { withErrorHandler, InsufficientStockError } from '../../utils/errorHandl
 import { generateUniqueId } from '../../../../shared/utils/idGenerator.js';
 import { BILL_PREFIXES } from '../../../../shared/constants/billPrefixes.js';
 import { PAYMENT_STATUS, STOCK_STATUS } from '../../../../shared/constants/enums.js';
+import {
+  parseBillDateInput,
+  isFutureBillDate,
+  isBackdatedBill,
+} from '../../../../shared/utils/billDate.js';
 
 async function generateMedicineBill(event) {
   if (event.httpMethod !== 'POST') {
@@ -57,9 +62,29 @@ async function generateMedicineBill(event) {
     if (!item.quantity || item.quantity <= 0) {
       return badRequest(`Item ${i + 1}: Valid quantity is required`);
     }
+    const pct = Number(item.discountPercent);
+    if (item.discountPercent != null && item.discountPercent !== '' && (Number.isNaN(pct) || pct < 0 || pct > 100)) {
+      return badRequest(`Item ${i + 1}: Discount must be between 0 and 100`);
+    }
   }
 
   const db = await getDb();
+  const now = new Date();
+  const billDate = parseBillDateInput(data.billDate) || now;
+
+  if (Number.isNaN(billDate.getTime())) {
+    return badRequest('Invalid bill date');
+  }
+  if (isFutureBillDate(billDate)) {
+    return badRequest('Bill date cannot be in the future');
+  }
+
+  const backdated = isBackdatedBill(billDate);
+  const skipStockDeduction = backdated && data.deductStock === false;
+
+  if (!backdated && data.deductStock === false) {
+    return badRequest('Skipping stock deduction is only allowed for backdated bills');
+  }
 
   // Get patient if ID provided
   let patient = null;
@@ -113,8 +138,7 @@ async function generateMedicineBill(event) {
       return notFound(`Stock batch (${item.batchId})`);
     }
 
-    // Check stock availability
-    if (batch.currentQty < item.quantity) {
+    if (!skipStockDeduction && batch.currentQty < item.quantity) {
       return unprocessable(`Insufficient stock for ${medicine.name}`, {
         medicine: medicine.name,
         batchNo: batch.batchNo,
@@ -123,9 +147,17 @@ async function generateMedicineBill(event) {
       });
     }
 
-    // Calculate item amount
-    const sellingPrice = batch.sellingPrice || batch.mrp;
-    const amount = item.quantity * sellingPrice;
+    const sellingPrice =
+      item.sellingPrice != null && item.sellingPrice !== ''
+        ? Number(item.sellingPrice)
+        : batch.sellingPrice || batch.mrp;
+    const discountPercent = Math.min(
+      100,
+      Math.max(0, Number(item.discountPercent) || 0),
+    );
+    const lineGross = item.quantity * sellingPrice;
+    const lineDiscount = Math.round(lineGross * (discountPercent / 100) * 100) / 100;
+    const amount = Math.round((lineGross - lineDiscount) * 100) / 100;
 
     billItems.push({
       medicineId: medicine._id,
@@ -136,52 +168,36 @@ async function generateMedicineBill(event) {
       quantity: item.quantity,
       mrp: batch.mrp,
       sellingPrice,
-      discount: 0,
+      discountPercent,
+      discount: lineDiscount,
       gstRate: batch.gstRate || 0,
       amount,
     });
 
-    // Prepare stock update
-    const newQty = batch.currentQty - item.quantity;
-    let newStatus = batch.status;
-    if (newQty === 0) {
-      newStatus = STOCK_STATUS.EXHAUSTED;
-    } else if (newQty <= medicine.reorderLevel) {
-      newStatus = STOCK_STATUS.LOW;
-    }
+    if (!skipStockDeduction) {
+      const newQty = batch.currentQty - item.quantity;
+      let newStatus = batch.status;
+      if (newQty === 0) {
+        newStatus = STOCK_STATUS.EXHAUSTED;
+      } else if (newQty <= medicine.reorderLevel) {
+        newStatus = STOCK_STATUS.LOW;
+      }
 
-    stockUpdates.push({
-      batchId: batch._id,
-      newQty,
-      newStatus,
-    });
+      stockUpdates.push({
+        batchId: batch._id,
+        newQty,
+        newStatus,
+      });
+    }
   }
 
-  // Calculate bill totals
   const subtotal = billItems.reduce((sum, item) => sum + item.amount, 0);
-
-  let discountAmount = 0;
-  if (data.discountValue && data.discountValue > 0) {
-    if (data.discountType === 'percentage') {
-      discountAmount = (subtotal * data.discountValue) / 100;
-    } else {
-      discountAmount = data.discountValue;
-    }
-  }
-
-  const taxableAmount = subtotal - discountAmount;
-  
-  // Calculate GST (if applicable)
-  const gstAmount = billItems.reduce((sum, item) => {
-    const itemTaxable = item.amount * (1 - (discountAmount / subtotal || 0));
-    return sum + (itemTaxable * item.gstRate / 100);
-  }, 0);
-  
-  const cgst = Math.round(gstAmount / 2 * 100) / 100;
-  const sgst = Math.round(gstAmount / 2 * 100) / 100;
-  
-  const grandTotal = Math.round(taxableAmount + cgst + sgst);
-  const roundOff = grandTotal - (taxableAmount + cgst + sgst);
+  const discountAmount = 0;
+  const taxableAmount = subtotal;
+  const cgst = 0;
+  const sgst = 0;
+  const grandTotal = Math.round(subtotal);
+  const roundOff = grandTotal - subtotal;
 
   // Calculate payment
   const paymentDetails = data.paymentDetails || {};
@@ -206,10 +222,6 @@ async function generateMedicineBill(event) {
     BILL_PREFIXES.MEDICINE_BILL
   );
 
-  // Create bill and update stock using transaction
-  const now = new Date();
-  const billDate = data.billDate ? new Date(data.billDate) : now;
-  
   const bill = {
     _id: new ObjectId(),
     billNo,
@@ -242,6 +254,8 @@ async function generateMedicineBill(event) {
     returnBillRef: null,
     isReturn: false,
     remarks: data.remarks || null,
+    backdated,
+    stockDeducted: !skipStockDeduction,
     createdBy: data.createdBy || 'Pharmacy',
     createdAt: now,
   };
@@ -252,19 +266,20 @@ async function generateMedicineBill(event) {
       // Insert bill
       await txDb.collection(COLLECTIONS.MEDICINE_BILLS).insertOne(bill, { session });
 
-      // Update stock for each item
-      for (const update of stockUpdates) {
-        await txDb.collection(COLLECTIONS.MEDICINE_STOCK_BATCHES).updateOne(
-          { _id: update.batchId },
-          {
-            $set: {
-              currentQty: update.newQty,
-              status: update.newStatus,
-              updatedAt: now,
+      if (stockUpdates.length > 0) {
+        for (const update of stockUpdates) {
+          await txDb.collection(COLLECTIONS.MEDICINE_STOCK_BATCHES).updateOne(
+            { _id: update.batchId },
+            {
+              $set: {
+                currentQty: update.newQty,
+                status: update.newStatus,
+                updatedAt: now,
+              },
             },
-          },
-          { session }
-        );
+            { session },
+          );
+        }
       }
     });
   } catch (error) {

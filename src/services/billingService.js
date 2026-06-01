@@ -56,6 +56,10 @@ export const billingService = {
     create: async (data) => {
       return api.post('/billing/medicine/generateMedicineBill', data);
     },
+
+    update: async (id, data) => {
+      return api.put(`/billing/medicine/updateMedicineBill?id=${id}`, { id, ...data });
+    },
   },
 };
 

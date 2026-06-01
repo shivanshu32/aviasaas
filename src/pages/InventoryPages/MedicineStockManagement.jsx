@@ -216,14 +216,15 @@ export default function MedicineStockManagement() {
     
     setFormLoading(true);
     try {
-      await medicineService.stock.add({
+      const res = await medicineService.stock.add({
         ...stockForm,
+        batchNo: stockForm.batchNo.trim(),
         quantity: Number(stockForm.quantity),
         purchasePrice: Number(stockForm.purchasePrice),
         mrp: Number(stockForm.mrp),
         sellingPrice: Number(stockForm.sellingPrice) || Number(stockForm.mrp),
       });
-      toast.success('Stock added successfully!');
+      toast.success(res.message || 'Stock added successfully!');
       setShowAddStock(false);
       setStockForm({
         medicineId: '',

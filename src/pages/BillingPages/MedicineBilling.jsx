@@ -1,11 +1,19 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Plus, Trash2, Printer, Receipt, Search, Package, User, CreditCard, Pill, Calendar } from 'lucide-react';
+import { useNavigate, useSearchParams, useParams } from 'react-router-dom';
+import { ArrowLeft, Plus, Trash2, Printer, Receipt, Search, Package, User, CreditCard, Pill, Calendar, Loader2 } from 'lucide-react';
 import { useReactToPrint } from 'react-to-print';
 import toast from 'react-hot-toast';
 import { Button, Input, Select, Badge } from '../../components/ui';
 import { billingService, patientService, doctorService, medicineService } from '../../services';
+import { getLocalDateInputString, parseBillDateInput, isBackdatedBill } from '../../utils/billDate';
+import { calcMedicineLineTotal } from '../../utils/medicineBillLine';
 import BillPrintView from './BillPrintView';
+
+function restoredQtyForBatch(batchId, originalItems) {
+  return (originalItems || [])
+    .filter((o) => String(o.batchId) === String(batchId))
+    .reduce((sum, o) => sum + Number(o.quantity || 0), 0);
+}
 
 const PAYMENT_MODES = [
   { value: 'cash', label: 'Cash' },
@@ -16,12 +24,16 @@ const PAYMENT_MODES = [
 
 export default function MedicineBilling() {
   const navigate = useNavigate();
+  const { id: editBillId } = useParams();
   const [searchParams] = useSearchParams();
   const patientIdParam = searchParams.get('patientId');
+  const isEdit = Boolean(editBillId);
   const printRef = useRef();
 
   const [loading, setLoading] = useState(false);
-  const [initialLoading, setInitialLoading] = useState(!!patientIdParam);
+  const [initialLoading, setInitialLoading] = useState(!!patientIdParam || isEdit);
+  const [editBillNo, setEditBillNo] = useState('');
+  const [originalBillItems, setOriginalBillItems] = useState([]);
   const [doctors, setDoctors] = useState([]);
   const [patients, setPatients] = useState([]);
   const [medicines, setMedicines] = useState([]);
@@ -39,20 +51,106 @@ export default function MedicineBilling() {
     patientId: '',
     doctorId: '',
     items: [],
-    discountType: 'percentage',
-    discountValue: 0,
     paymentMode: 'cash',
     paymentDetails: { cash: 0, card: 0, upi: 0, upiRef: '' },
     remarks: '',
-    billDate: new Date().toISOString().split('T')[0],
+    billDate: getLocalDateInputString(),
+    skipStockDeduction: false,
   });
+
+  const billDateParsed = parseBillDateInput(formData.billDate);
+  const isBackdated = billDateParsed ? isBackdatedBill(billDateParsed) : false;
 
   useEffect(() => {
     fetchDoctors();
-    if (patientIdParam) {
+    if (isEdit) {
+      loadBillForEdit(editBillId);
+    } else if (patientIdParam) {
       fetchPatientById(patientIdParam);
+    } else {
+      setInitialLoading(false);
     }
-  }, [patientIdParam]);
+  }, [editBillId, patientIdParam, isEdit]);
+
+  const loadBillForEdit = async (id) => {
+    setInitialLoading(true);
+    try {
+      const response = await billingService.medicine.getById(id);
+      const bill = response.bill;
+      if (!bill?.items?.length) {
+        toast.error('Bill has no items to edit');
+        navigate('/billing/medicine');
+        return;
+      }
+
+      setEditBillNo(bill.billNo || '');
+      setOriginalBillItems(bill.items);
+
+      const billDateStr = bill.billDate
+        ? getLocalDateInputString(new Date(bill.billDate))
+        : getLocalDateInputString();
+      const parsed = parseBillDateInput(billDateStr);
+      const backdatedOnLoad = parsed ? isBackdatedBill(parsed) : false;
+
+      if (bill.patient) {
+        setSelectedPatient(bill.patient);
+        setPatientSearch(bill.patient.name || bill.patientName);
+      }
+
+      const items = await Promise.all(
+        bill.items.map(async (item) => {
+          let batchCurrent = 0;
+          try {
+            const batchRes = await medicineService.stock.getBatches(item.medicineId);
+            const batch = (batchRes.batches || []).find(
+              (b) => String(b._id) === String(item.batchId),
+            );
+            batchCurrent = batch?.currentQty ?? 0;
+          } catch {
+            batchCurrent = 0;
+          }
+          const restored = restoredQtyForBatch(item.batchId, bill.items);
+          return {
+            medicineId: item.medicineId,
+            medicineName: item.medicineName,
+            batchId: item.batchId,
+            batchNo: item.batchNo,
+            expiryDate: item.expiryDate,
+            availableQty: batchCurrent + restored,
+            quantity: item.quantity,
+            mrp: item.mrp,
+            sellingPrice: item.sellingPrice ?? item.mrp,
+            discountPercent: item.discountPercent ?? 0,
+            gstRate: item.gstRate || 0,
+          };
+        }),
+      );
+
+      setFormData({
+        patientName: bill.patientName || bill.patient?.name || '',
+        patientPhone: bill.patientPhone || bill.patient?.phone || '',
+        patientId: bill.patientId ? String(bill.patientId) : bill.patient?._id || '',
+        doctorId: bill.doctorId ? String(bill.doctorId) : bill.doctor?._id || '',
+        items,
+        paymentMode: bill.paymentMode || 'cash',
+        paymentDetails: {
+          cash: bill.paymentDetails?.cash ?? 0,
+          card: bill.paymentDetails?.card ?? 0,
+          upi: bill.paymentDetails?.upi ?? 0,
+          upiRef: bill.paymentDetails?.upiRef || '',
+        },
+        remarks: bill.remarks || '',
+        billDate: billDateStr,
+        skipStockDeduction: backdatedOnLoad && bill.stockDeducted === false,
+      });
+    } catch (error) {
+      console.error('Failed to load bill:', error);
+      toast.error(error.error || 'Failed to load bill');
+      navigate('/billing/medicine');
+    } finally {
+      setInitialLoading(false);
+    }
+  };
 
   const fetchPatientById = async (id) => {
     setInitialLoading(true);
@@ -140,19 +238,17 @@ export default function MedicineBilling() {
         return;
       }
 
-      // Use first available batch (FEFO - First Expiry First Out)
-      const batch = batches[0];
+      const batch = batches.find((b) => b.currentQty > 0) || batches[0];
+      const restored = isEdit ? restoredQtyForBatch(batch._id, originalBillItems) : 0;
+      const availableQty = (batch.currentQty || 0) + restored;
 
-      // Check if already added
       const existingIndex = formData.items.findIndex(
-        (item) => item.medicineId === medicine._id && item.batchId === batch._id
+        (item) => item.medicineId === medicine._id && item.batchId === batch._id,
       );
 
       if (existingIndex >= 0) {
-        // Increment quantity
-        handleItemChange(existingIndex, 'quantity', formData.items[existingIndex].quantity + 1);
+        handleItemChange(existingIndex, 'quantity', Number(formData.items[existingIndex].quantity) + 1);
       } else {
-        // Add new item
         setFormData((prev) => ({
           ...prev,
           items: [
@@ -163,10 +259,11 @@ export default function MedicineBilling() {
               batchId: batch._id,
               batchNo: batch.batchNo,
               expiryDate: batch.expiryDate,
-              availableQty: batch.currentQty,
+              availableQty,
               quantity: 1,
               mrp: batch.mrp,
               sellingPrice: batch.sellingPrice || batch.mrp,
+              discountPercent: 0,
               gstRate: batch.gstRate || 0,
             },
           ],
@@ -205,18 +302,12 @@ export default function MedicineBilling() {
     }));
   };
 
-  // Calculate totals (prices are GST-inclusive, no separate GST calculation)
-  const subtotal = formData.items.reduce(
-    (sum, item) => sum + (Number(item.quantity) || 0) * (Number(item.sellingPrice) || 0),
-    0
+  const lineTotals = formData.items.map((item) =>
+    calcMedicineLineTotal(item.quantity, item.sellingPrice, item.discountPercent),
   );
-
-  const discountAmount =
-    formData.discountType === 'percentage'
-      ? (subtotal * Number(formData.discountValue || 0)) / 100
-      : Number(formData.discountValue || 0);
-
-  const grandTotal = Math.round(subtotal - discountAmount);
+  const grandTotal = Math.round(
+    lineTotals.reduce((sum, line) => sum + line.amount, 0),
+  );
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -230,9 +321,8 @@ export default function MedicineBilling() {
       return;
     }
 
-    // Validate quantities
     for (const item of formData.items) {
-      if (item.quantity > item.availableQty) {
+      if (!formData.skipStockDeduction && item.quantity > item.availableQty) {
         toast.error(`Insufficient stock for ${item.medicineName}. Available: ${item.availableQty}`);
         return;
       }
@@ -249,9 +339,9 @@ export default function MedicineBilling() {
           medicineId: item.medicineId,
           batchId: item.batchId,
           quantity: Number(item.quantity),
+          sellingPrice: Number(item.sellingPrice),
+          discountPercent: Number(item.discountPercent) || 0,
         })),
-        discountType: formData.discountType,
-        discountValue: Number(formData.discountValue) || 0,
         paymentMode: formData.paymentMode,
         paymentDetails: formData.paymentMode === 'mixed' ? {
           cash: Number(formData.paymentDetails.cash) || 0,
@@ -261,14 +351,17 @@ export default function MedicineBilling() {
         } : undefined,
         remarks: formData.remarks || null,
         billDate: formData.billDate || null,
+        deductStock: isBackdated ? !formData.skipStockDeduction : true,
       };
 
-      const response = await billingService.medicine.create(payload);
+      const response = isEdit
+        ? await billingService.medicine.update(editBillId, payload)
+        : await billingService.medicine.create(payload);
       setGeneratedBill(response.bill);
       setShowPrintView(true);
-      toast.success('Bill generated successfully!');
+      toast.success(isEdit ? 'Bill updated successfully!' : 'Bill generated successfully!');
     } catch (error) {
-      toast.error(error.error || 'Failed to generate bill');
+      toast.error(error.error || (isEdit ? 'Failed to update bill' : 'Failed to generate bill'));
     } finally {
       setLoading(false);
     }
@@ -283,6 +376,14 @@ export default function MedicineBilling() {
     value: doc._id,
     label: doc.name,
   }));
+
+  if (initialLoading) {
+    return (
+      <div className="flex items-center justify-center py-24">
+        <Loader2 className="w-8 h-8 animate-spin text-primary-600" />
+      </div>
+    );
+  }
 
   if (showPrintView && generatedBill) {
     return (
@@ -319,12 +420,19 @@ export default function MedicineBilling() {
           <button onClick={() => navigate('/billing/medicine')} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
             <ArrowLeft className="w-5 h-5 text-gray-600" />
           </button>
-          <h1 className="text-xl font-bold text-gray-900">Medicine Billing</h1>
+          <div>
+            <h1 className="text-xl font-bold text-gray-900">
+              {isEdit ? 'Edit Medicine Bill' : 'Medicine Billing'}
+            </h1>
+            {isEdit && editBillNo && (
+              <p className="text-sm text-gray-500">{editBillNo}</p>
+            )}
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="secondary" onClick={() => navigate('/billing/medicine')}>Cancel</Button>
           <Button onClick={handleSubmit} loading={loading} disabled={formData.items.length === 0} icon={Receipt}>
-            Generate Bill (₹{grandTotal})
+            {isEdit ? `Save Bill (₹${grandTotal})` : `Generate Bill (₹${grandTotal})`}
           </Button>
         </div>
       </div>
@@ -369,7 +477,6 @@ export default function MedicineBilling() {
             <Select label="Prescribed By" name="doctorId" value={formData.doctorId} onChange={handleChange} options={doctorOptions} placeholder="Select doctor" />
             <Select label="Payment Mode" name="paymentMode" value={formData.paymentMode} onChange={handleChange} options={PAYMENT_MODES} />
 
-            {/* Bill Date */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 <span className="flex items-center gap-1"><Calendar className="w-3 h-3" /> Bill Date</span>
@@ -378,11 +485,40 @@ export default function MedicineBilling() {
                 type="date"
                 name="billDate"
                 value={formData.billDate}
-                onChange={handleChange}
-                max={new Date().toISOString().split('T')[0]}
+                onChange={(e) => {
+                  const nextDate = e.target.value;
+                  const parsed = parseBillDateInput(nextDate);
+                  setFormData((prev) => ({
+                    ...prev,
+                    billDate: nextDate,
+                    skipStockDeduction:
+                      parsed && isBackdatedBill(parsed) ? prev.skipStockDeduction : false,
+                  }));
+                }}
+                max={getLocalDateInputString()}
                 className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
               />
+              <p className="text-xs text-gray-500 mt-1">
+                Past dates are allowed for backdated bills.
+              </p>
             </div>
+
+            {isBackdated && (
+              <label className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-2">
+                <input
+                  type="checkbox"
+                  className="mt-0.5 h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                  checked={formData.skipStockDeduction}
+                  onChange={(e) =>
+                    setFormData((prev) => ({ ...prev, skipStockDeduction: e.target.checked }))
+                  }
+                />
+                <span className="text-xs text-amber-900">
+                  Record only — do not deduct from current stock (use when the sale already
+                  happened or stock was adjusted separately).
+                </span>
+              </label>
+            )}
             
             {formData.paymentMode === 'mixed' && (
               <div className="grid grid-cols-3 gap-2 pt-2 border-t">
@@ -440,12 +576,38 @@ export default function MedicineBilling() {
                   </div>
                   <div className="grid grid-cols-4 gap-2 items-center">
                     <div>
-                      <input type="number" value={item.quantity} onChange={(e) => handleItemChange(index, 'quantity', e.target.value)} min="1" max={item.availableQty} className="w-full px-2 py-1 text-sm border border-gray-200 rounded" />
-                      <p className="text-xs text-gray-400">/{item.availableQty}</p>
+                      <label className="text-xs text-gray-500">Qty</label>
+                      <input
+                        type="number"
+                        value={item.quantity}
+                        onChange={(e) => handleItemChange(index, 'quantity', e.target.value)}
+                        min="1"
+                        max={formData.skipStockDeduction ? undefined : item.availableQty}
+                        className="w-full px-2 py-1 text-sm border border-gray-200 rounded"
+                      />
                     </div>
-                    <div className="text-xs text-gray-500">MRP: ₹{item.mrp}</div>
-                    <input type="number" value={item.sellingPrice} onChange={(e) => handleItemChange(index, 'sellingPrice', e.target.value)} min="0" step="0.01" className="w-full px-2 py-1 text-sm border border-gray-200 rounded" />
-                    <p className="text-right font-medium text-sm">₹{((Number(item.quantity) || 0) * (Number(item.sellingPrice) || 0)).toFixed(0)}</p>
+                    <div>
+                      <label className="text-xs text-gray-500">MRP</label>
+                      <p className="text-sm font-medium py-1">₹{item.mrp}</p>
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-500">Disc %</label>
+                      <input
+                        type="number"
+                        value={item.discountPercent}
+                        onChange={(e) => handleItemChange(index, 'discountPercent', e.target.value)}
+                        min="0"
+                        max="100"
+                        step="0.01"
+                        className="w-full px-2 py-1 text-sm border border-gray-200 rounded"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-500">Amount</label>
+                      <p className="text-right font-medium text-sm py-1">
+                        ₹{calcMedicineLineTotal(item.quantity, item.sellingPrice, item.discountPercent).amount.toFixed(2)}
+                      </p>
+                    </div>
                   </div>
                 </div>
               ))
@@ -463,29 +625,7 @@ export default function MedicineBilling() {
           </div>
           
           <div className="space-y-3">
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-600">Subtotal</span>
-              <span className="font-medium">₹{subtotal.toFixed(2)}</span>
-            </div>
-            
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-gray-600">Discount</span>
-              <select value={formData.discountType} onChange={handleChange} name="discountType" className="px-2 py-1 text-xs border border-gray-200 rounded">
-                <option value="fixed">₹</option>
-                <option value="percentage">%</option>
-              </select>
-              <input type="number" value={formData.discountValue} onChange={handleChange} name="discountValue" className="w-16 px-2 py-1 text-sm border border-gray-200 rounded" min="0" />
-            </div>
-            
-            {discountAmount > 0 && (
-              <div className="flex justify-between text-sm text-green-600">
-                <span>Discount</span>
-                <span>-₹{discountAmount.toFixed(2)}</span>
-              </div>
-            )}
-            
-            <p className="text-xs text-gray-400 italic">* Prices inclusive of GST</p>
-            
+            <p className="text-xs text-gray-500">Discount is applied per medicine line.</p>
             <div className="flex justify-between text-lg font-bold pt-3 border-t border-gray-200">
               <span>Grand Total</span>
               <span className="text-primary-600">₹{grandTotal}</span>

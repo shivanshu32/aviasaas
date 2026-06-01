@@ -65,6 +65,7 @@ function App() {
         <Route path="billing/opd/new" element={<OpdBillGenerator />} />
         <Route path="billing/misc/new" element={<MiscBillGenerator />} />
         <Route path="billing/medicine/new" element={<MedicineBilling />} />
+        <Route path="billing/medicine/edit/:id" element={<MedicineBilling />} />
         <Route path="billing/:type/:id" element={<ViewBill />} />
         
         {/* Inventory */}

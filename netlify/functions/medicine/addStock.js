@@ -27,9 +27,35 @@
 
 import { ObjectId } from 'mongodb';
 import { getDb, COLLECTIONS } from '../utils/db.js';
-import { created, badRequest, notFound, conflict } from '../utils/response.js';
+import { created, success, badRequest, notFound, conflict } from '../utils/response.js';
 import { withErrorHandler } from '../utils/errorHandler.js';
 import { STOCK_STATUS } from '../../../shared/constants/enums.js';
+
+function mrpMatches(existingMrp, incomingMrp) {
+  const a = Number(existingMrp);
+  const b = Number(incomingMrp);
+  if (Number.isNaN(a) || Number.isNaN(b)) return false;
+  return Math.abs(a - b) < 0.01;
+}
+
+function stockStatusForQty(qty, reorderLevel) {
+  if (qty <= 0) return STOCK_STATUS.EXHAUSTED;
+  if (qty <= reorderLevel) return STOCK_STATUS.LOW;
+  return STOCK_STATUS.ACTIVE;
+}
+
+function batchWithMedicine(batch, medicine) {
+  return {
+    ...batch,
+    medicine: {
+      _id: medicine._id,
+      medicineId: medicine.medicineId,
+      name: medicine.name,
+      packSize: medicine.packSize,
+      packUnit: medicine.packUnit,
+    },
+  };
+}
 
 async function addStock(event) {
   if (event.httpMethod !== 'POST') {
@@ -40,7 +66,8 @@ async function addStock(event) {
 
   // Validate required fields
   if (!data.medicineId) return badRequest('Medicine ID is required');
-  if (!data.batchNo) return badRequest('Batch number is required');
+  const batchNo = String(data.batchNo ?? '').trim();
+  if (!batchNo) return badRequest('Batch number is required');
   if (!data.expiryDate) return badRequest('Expiry date is required');
   if (!data.quantity || data.quantity <= 0) return badRequest('Valid quantity is required');
   if (!data.purchasePrice) return badRequest('Purchase price is required');
@@ -58,48 +85,79 @@ async function addStock(event) {
     return notFound('Medicine');
   }
 
-  // Check for duplicate batch
+  const addQty = Number(data.quantity);
+  const mrp = Number(data.mrp);
+  const purchasePrice = Number(data.purchasePrice);
+  const sellingPrice = Number(data.sellingPrice) || mrp;
+  const reorderLevel = Number(medicine.reorderLevel) || 0;
+  const now = new Date();
+
   const existingBatch = await db.collection(COLLECTIONS.MEDICINE_STOCK_BATCHES).findOne({
     medicineId: medicine._id,
-    batchNo: data.batchNo,
+    batchNo,
   });
 
   if (existingBatch) {
-    return conflict('Stock batch with this batch number already exists for this medicine');
+    if (!mrpMatches(existingBatch.mrp, mrp)) {
+      return conflict(
+        `Batch "${batchNo}" already exists with MRP ₹${existingBatch.mrp}. ` +
+          `Cannot add stock with a different MRP (₹${mrp}).`,
+      );
+    }
+
+    const newQty = existingBatch.currentQty + addQty;
+    const newInitialQty = (existingBatch.initialQty ?? existingBatch.currentQty) + addQty;
+    const newStatus = stockStatusForQty(newQty, reorderLevel);
+
+    const updateResult = await db.collection(COLLECTIONS.MEDICINE_STOCK_BATCHES).findOneAndUpdate(
+      { _id: existingBatch._id },
+      {
+        $set: {
+          currentQty: newQty,
+          initialQty: newInitialQty,
+          status: newStatus,
+          updatedAt: now,
+        },
+      },
+      { returnDocument: 'after' },
+    );
+
+    const updatedBatch = updateResult?.value ?? updateResult;
+
+    return success(
+      {
+        stockBatch: batchWithMedicine(updatedBatch, medicine),
+        merged: true,
+        quantityAdded: addQty,
+      },
+      'Stock added to existing batch',
+    );
   }
 
-  // Parse dates
   const expiryDate = new Date(data.expiryDate);
   const mfgDate = data.mfgDate ? new Date(data.mfgDate) : null;
   const purchaseDate = data.purchaseDate ? new Date(data.purchaseDate) : new Date();
 
-  // Validate expiry date is in future
   if (expiryDate <= new Date()) {
     return badRequest('Expiry date must be in the future');
   }
 
-  // Determine initial status
-  let status = STOCK_STATUS.ACTIVE;
-  if (data.quantity <= medicine.reorderLevel) {
-    status = STOCK_STATUS.LOW;
-  }
+  const status = stockStatusForQty(addQty, reorderLevel);
 
-  // Create stock batch document
-  const now = new Date();
   const stockBatch = {
     _id: new ObjectId(),
     medicineId: medicine._id,
-    batchNo: data.batchNo,
+    batchNo,
     expiryDate,
     mfgDate,
     purchaseDate,
     supplier: data.supplier || null,
     purchaseInvoiceNo: data.purchaseInvoiceNo || null,
-    initialQty: Number(data.quantity),
-    currentQty: Number(data.quantity),
-    purchasePrice: Number(data.purchasePrice),
-    mrp: Number(data.mrp),
-    sellingPrice: Number(data.sellingPrice) || Number(data.mrp),
+    initialQty: addQty,
+    currentQty: addQty,
+    purchasePrice,
+    mrp,
+    sellingPrice,
     gstRate: Number(data.gstRate) || medicine.gstRate || 0,
     status,
     remarks: data.remarks || null,
@@ -109,21 +167,9 @@ async function addStock(event) {
 
   await db.collection(COLLECTIONS.MEDICINE_STOCK_BATCHES).insertOne(stockBatch);
 
-  // Return with medicine info
-  const response = {
-    ...stockBatch,
-    medicine: {
-      _id: medicine._id,
-      medicineId: medicine.medicineId,
-      name: medicine.name,
-      packSize: medicine.packSize,
-      packUnit: medicine.packUnit,
-    },
-  };
-
   return created(
-    { stockBatch: response },
-    'Stock added successfully'
+    { stockBatch: batchWithMedicine(stockBatch, medicine), merged: false },
+    'Stock added successfully',
   );
 }
 

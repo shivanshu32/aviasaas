@@ -56,7 +56,10 @@ const MedicineBillPrint = forwardRef(({ bill }, ref) => {
       <div className="bill-header">
         <div className="bill-info-left">
           <div className="bill-number">Bill No: {bill.billNo}</div>
-          <div>Date: {formatDate(bill.billDate)} | Time: {formatTime(bill.billDate)}</div>
+          <div>
+            Date: {formatDate(bill.billDate)}
+            {bill.stockDeducted === false ? '' : ` | Time: ${formatTime(bill.billDate)}`}
+          </div>
         </div>
         <div className="bill-info-right" style={{ textAlign: 'right' }}>
           <div>Payment: <strong style={{ textTransform: 'capitalize' }}>{bill.paymentMode}</strong></div>
@@ -104,7 +107,7 @@ const MedicineBillPrint = forwardRef(({ bill }, ref) => {
             <th style={{ width: '60px' }}>Expiry</th>
             <th style={{ width: '40px' }} className="text-center">Qty</th>
             <th style={{ width: '60px' }} className="text-right">MRP</th>
-            <th style={{ width: '60px' }} className="text-right">Rate</th>
+            <th style={{ width: '50px' }} className="text-center">Disc %</th>
             <th style={{ width: '70px' }} className="text-right">Amount</th>
           </tr>
         </thead>
@@ -122,7 +125,9 @@ const MedicineBillPrint = forwardRef(({ bill }, ref) => {
               <td style={{ fontSize: '9pt' }}>{item.expiryDate ? formatExpiry(item.expiryDate) : '-'}</td>
               <td className="text-center">{item.quantity}</td>
               <td className="text-right">{item.mrp?.toFixed(2)}</td>
-              <td className="text-right">{(item.sellingPrice || item.rate)?.toFixed(2)}</td>
+              <td className="text-center">
+                {(item.discountPercent ?? 0) > 0 ? `${item.discountPercent}%` : '-'}
+              </td>
               <td className="text-right" style={{ fontWeight: '500' }}>{item.amount?.toFixed(2)}</td>
             </tr>
           ))}
@@ -135,14 +140,6 @@ const MedicineBillPrint = forwardRef(({ bill }, ref) => {
           <span className="total-label">Subtotal</span>
           <span className="total-value">₹{bill.subtotal?.toFixed(2)}</span>
         </div>
-        {bill.discountAmount > 0 && (
-          <div className="total-row discount">
-            <span className="total-label">
-              Discount {bill.discountType === 'percentage' && `(${bill.discountValue}%)`}
-            </span>
-            <span className="total-value">-₹{bill.discountAmount?.toFixed(2)}</span>
-          </div>
-        )}
         {(bill.cgst > 0 || bill.sgst > 0) && (
           <>
             <div className="total-row">
@@ -167,72 +164,8 @@ const MedicineBillPrint = forwardRef(({ bill }, ref) => {
         </div>
       </div>
 
-      {/* Amount in Words */}
       <div className="amount-words">
         Amount in words: <strong>Rupees {numberToWords(Math.round(bill.grandTotal || 0))} Only</strong>
-      </div>
-
-      {/* Payment Info */}
-      <div className="payment-info">
-        <div className="payment-item">
-          <div className="payment-label">Total Amount</div>
-          <div className="payment-value">₹{bill.grandTotal?.toFixed(2)}</div>
-        </div>
-        <div className="payment-item">
-          <div className="payment-label">Paid Amount</div>
-          <div className="payment-value">₹{bill.paidAmount?.toFixed(2)}</div>
-        </div>
-        <div className="payment-item">
-          <div className="payment-label">Balance Due</div>
-          <div className={`payment-value ${bill.dueAmount > 0 ? 'due' : ''}`}>
-            ₹{bill.dueAmount?.toFixed(2)}
-          </div>
-        </div>
-      </div>
-
-      {/* GST Note */}
-      <div style={{ 
-        fontSize: '8pt', 
-        color: '#6b7280', 
-        padding: '8px', 
-        background: '#f9fafb', 
-        borderRadius: '4px',
-        marginTop: '12px',
-        textAlign: 'center'
-      }}>
-        * All prices are inclusive of GST
-      </div>
-
-      {/* Remarks */}
-      {bill.remarks && (
-        <div className="notes-section">
-          <div className="notes-title">Remarks</div>
-          <div className="notes-content">{bill.remarks}</div>
-        </div>
-      )}
-
-      {/* Footer */}
-      <div className="print-footer">
-        <div className="signature-section">
-          <div className="signature-box">
-            <div style={{ height: '40px' }}></div>
-            <div className="signature-line">Patient/Attendant</div>
-          </div>
-          <div className="signature-box">
-            <div style={{ height: '40px' }}></div>
-            <div className="signature-line">Pharmacist</div>
-          </div>
-        </div>
-
-        <div className="footer-notes">
-          <p>• Please check the medicines before leaving the counter.</p>
-          <p>• Medicines once sold will not be taken back or exchanged.</p>
-          <p>• Store medicines as per instructions on the pack.</p>
-          <p>• Keep medicines out of reach of children.</p>
-          <p style={{ marginTop: '8px', fontSize: '7pt' }}>
-            Generated on: {formatDate(bill.createdAt)} {formatTime(bill.createdAt)} | By: {bill.createdBy || 'System'}
-          </p>
-        </div>
       </div>
     </div>
   );
