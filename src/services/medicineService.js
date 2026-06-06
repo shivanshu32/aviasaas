@@ -76,8 +76,12 @@ export const medicineService = {
       return api.get(`/medicine/getCurrentStock${query}`);
     },
 
-    getBatches: async (medicineId) => {
-      return api.get(`/medicine/getStockBatches?medicineId=${medicineId}`);
+    getBatches: async (medicineId, params = {}) => {
+      const query = new URLSearchParams({ medicineId });
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== '') query.append(key, value);
+      });
+      return api.get(`/medicine/getStockBatches?${query}`);
     },
 
     getLowStock: async () => {
@@ -94,6 +98,16 @@ export const medicineService = {
 
     deduct: async (data) => {
       return api.post('/medicine/deductStock', data);
+    },
+  },
+
+  activity: {
+    getForMedicine: async (medicineId, params = {}) => {
+      const query = new URLSearchParams({ medicineId });
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== '') query.append(key, value);
+      });
+      return api.get(`/medicine/getMedicineActivity?${query}`);
     },
   },
 };

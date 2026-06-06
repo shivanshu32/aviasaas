@@ -21,7 +21,8 @@ import { ObjectId } from 'mongodb';
 import { getDb, COLLECTIONS } from './utils/db.js';
 import { success, badRequest, notFound, unprocessable } from './utils/response.js';
 import { withErrorHandler } from './utils/errorHandler.js';
-import { STOCK_STATUS } from '../../shared/constants/enums.js';
+import { STOCK_STATUS, MOVEMENT_TYPE, MOVEMENT_SOURCE } from '../../shared/constants/enums.js';
+import { logMedicineMovement } from './utils/medicineActivity.js';
 
 async function deductStock(event) {
   if (event.httpMethod !== 'POST') {
@@ -83,6 +84,7 @@ async function deductStock(event) {
 
   // Update stock batch
   const now = new Date();
+  const deductQty = Number(data.quantity);
   const updateResult = await db.collection(COLLECTIONS.MEDICINE_STOCK_BATCHES).findOneAndUpdate(
     { _id: stockBatch._id },
     {
@@ -95,10 +97,27 @@ async function deductStock(event) {
     { returnDocument: 'after' }
   );
 
+  await logMedicineMovement(db, {
+    medicineId: medicine._id,
+    batchId: stockBatch._id,
+    batchNo: stockBatch.batchNo,
+    type: MOVEMENT_TYPE.STOCK_DEDUCT,
+    source: MOVEMENT_SOURCE.MANUAL,
+    quantityDelta: -deductQty,
+    previousQty: stockBatch.currentQty,
+    newQty,
+    reason: data.reason,
+    remarks: data.remarks || null,
+    referenceType: 'batch',
+    referenceId: stockBatch._id,
+    referenceLabel: stockBatch.batchNo,
+    createdAt: now,
+  });
+
   return success(
     { 
       stockBatch: updateResult,
-      deducted: data.quantity,
+      deducted: deductQty,
       previousQty: stockBatch.currentQty,
       newQty,
     },

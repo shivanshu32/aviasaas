@@ -41,6 +41,7 @@ import {
   isFutureBillDate,
   isBackdatedBill,
 } from '../../shared/utils/billDate.js';
+import { logBillSaleMovements } from './utils/medicineActivity.js';
 
 async function generateMedicineBill(event) {
   if (event.httpMethod !== 'POST') {
@@ -265,7 +266,6 @@ async function generateMedicineBill(event) {
   // Use transaction to ensure atomicity
   try {
     await withTransaction(async (session, txDb) => {
-      // Insert bill
       await txDb.collection(COLLECTIONS.MEDICINE_BILLS).insertOne(bill, { session });
 
       if (stockUpdates.length > 0) {
@@ -282,6 +282,19 @@ async function generateMedicineBill(event) {
             { session },
           );
         }
+
+        await logBillSaleMovements(
+          txDb,
+          billItems,
+          {
+            billId: bill._id,
+            billNo: bill.billNo,
+            patientName: data.patientName,
+            performedBy: bill.createdBy,
+          },
+          session,
+          now,
+        );
       }
     });
   } catch (error) {

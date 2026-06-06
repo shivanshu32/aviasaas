@@ -11,6 +11,8 @@ import { ObjectId } from 'mongodb';
 import { getDb, COLLECTIONS } from './utils/db.js';
 import { success, badRequest, notFound } from './utils/response.js';
 import { withErrorHandler } from './utils/errorHandler.js';
+import { MOVEMENT_TYPE, MOVEMENT_SOURCE } from '../../shared/constants/enums.js';
+import { logMedicineMovements } from './utils/medicineActivity.js';
 
 async function deleteMedicine(event) {
   if (event.httpMethod !== 'DELETE') {
@@ -41,6 +43,10 @@ async function deleteMedicine(event) {
 
   const now = new Date();
 
+  const batches = await db.collection(COLLECTIONS.MEDICINE_STOCK_BATCHES)
+    .find({ medicineId: medicine._id })
+    .toArray();
+
   await db.collection(COLLECTIONS.MEDICINES).updateOne(
     { _id: medicine._id },
     {
@@ -55,6 +61,26 @@ async function deleteMedicine(event) {
   const batchResult = await db.collection(COLLECTIONS.MEDICINE_STOCK_BATCHES).deleteMany({
     medicineId: medicine._id,
   });
+
+  const deleteMovements = batches.map((batch) => ({
+    medicineId: medicine._id,
+    batchId: batch._id,
+    batchNo: batch.batchNo,
+    type: MOVEMENT_TYPE.MEDICINE_DELETE,
+    source: MOVEMENT_SOURCE.MANUAL,
+    quantityDelta: -(batch.currentQty || 0),
+    previousQty: batch.currentQty || 0,
+    newQty: 0,
+    referenceType: 'medicine',
+    referenceId: medicine._id,
+    referenceLabel: medicine.medicineId,
+    metadata: { medicineName: medicine.name },
+    createdAt: now,
+  }));
+
+  if (deleteMovements.length > 0) {
+    await logMedicineMovements(db, deleteMovements);
+  }
 
   return success(
     {

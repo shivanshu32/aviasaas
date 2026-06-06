@@ -1,6 +1,10 @@
 import { ObjectId } from 'mongodb';
 import { COLLECTIONS } from './db.js';
 import { STOCK_STATUS } from '../../../shared/constants/enums.js';
+import {
+  logBillRestoreMovements,
+  logBillSaleMovements,
+} from './medicineActivity.js';
 
 export function stockStatusForQty(qty, reorderLevel) {
   if (qty <= 0) return STOCK_STATUS.EXHAUSTED;
@@ -9,7 +13,7 @@ export function stockStatusForQty(qty, reorderLevel) {
 }
 
 /** Restore quantities from a saved bill back into stock batches. */
-export async function restoreStockForBillItems(txDb, items, session, now) {
+export async function restoreStockForBillItems(txDb, items, session, now, billContext = null) {
   for (const item of items || []) {
     if (!item?.batchId || !item?.quantity) continue;
 
@@ -42,6 +46,10 @@ export async function restoreStockForBillItems(txDb, items, session, now) {
       },
       { session },
     );
+  }
+
+  if (billContext) {
+    await logBillRestoreMovements(txDb, items, billContext, session, now);
   }
 }
 
@@ -125,7 +133,14 @@ export async function buildMedicineBillLineItems(db, dataItems, { skipStockDeduc
   return { billItems, stockUpdates };
 }
 
-export async function applyStockUpdates(txDb, stockUpdates, session, now) {
+export async function applyStockUpdates(
+  txDb,
+  stockUpdates,
+  session,
+  now,
+  billContext = null,
+  billItems = null,
+) {
   for (const update of stockUpdates) {
     await txDb.collection(COLLECTIONS.MEDICINE_STOCK_BATCHES).updateOne(
       { _id: update.batchId },
@@ -138,5 +153,9 @@ export async function applyStockUpdates(txDb, stockUpdates, session, now) {
       },
       { session },
     );
+  }
+
+  if (billContext && billItems?.length) {
+    await logBillSaleMovements(txDb, billItems, billContext, session, now);
   }
 }

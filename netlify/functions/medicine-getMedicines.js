@@ -85,6 +85,7 @@ async function getMedicines(event) {
           batchMrp: { $arrayElemAt: ['$stockInfo.batchMrp', 0] },
           batchSellingPrice: { $arrayElemAt: ['$stockInfo.batchSellingPrice', 0] },
           batchPurchasePrice: { $arrayElemAt: ['$stockInfo.batchPurchasePrice', 0] },
+          nearestExpiry: { $arrayElemAt: ['$stockInfo.nearestExpiry', 0] },
         },
       },
       { $project: { stockInfo: 0 } },

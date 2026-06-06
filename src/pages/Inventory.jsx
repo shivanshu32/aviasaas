@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, Fragment } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Search,
@@ -9,6 +9,7 @@ import {
   PackageX,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   Pencil,
   Plus,
 } from 'lucide-react';
@@ -16,6 +17,7 @@ import { medicineService } from '../services';
 import { formatMedicinePrice, getMedicineRowPrices } from '../utils/medicinePrice';
 import MedicineCatalogModal from '../components/inventory/MedicineCatalogModal';
 import MedicineDeleteButton from '../components/inventory/MedicineDeleteButton';
+import MedicineDetailPanel from '../components/inventory/MedicineDetailPanel';
 
 const PAGE_SIZE = 50;
 
@@ -43,6 +45,8 @@ export default function Inventory() {
 
   const [catalogModalOpen, setCatalogModalOpen] = useState(false);
   const [catalogMedicine, setCatalogMedicine] = useState(null);
+  const [expandedMedicineId, setExpandedMedicineId] = useState(null);
+  const [detailRefreshKey, setDetailRefreshKey] = useState(0);
 
   const fetchStats = useCallback(async () => {
     try {
@@ -179,6 +183,10 @@ export default function Inventory() {
     if (days <= 30) return { label: `${days}d left`, class: 'text-red-600' };
     if (days <= 90) return { label: `${days}d left`, class: 'text-orange-600' };
     return null;
+  };
+
+  const toggleExpand = (medicineId) => {
+    setExpandedMedicineId((prev) => (prev === medicineId ? null : medicineId));
   };
 
   const rangeStart =
@@ -319,6 +327,7 @@ export default function Inventory() {
               <table className="table min-w-[700px]">
                 <thead>
                   <tr>
+                    <th className="w-10" />
                     <th>Medicine</th>
                     <th>Category</th>
                     <th>Stock</th>
@@ -333,15 +342,40 @@ export default function Inventory() {
                   {filteredData.map((med) => {
                     const status = getStockStatus(med);
                     const expiryStatus = getExpiryStatus(med.nearestExpiry || med.expiryDate);
+                    const isExpanded = tab === 'medicines' && expandedMedicineId === med._id;
 
                     return (
-                      <tr key={med._id}>
-                        <td>
-                          <div>
-                            <p className="font-medium">{med.name}</p>
-                            <p className="text-sm text-gray-500">{med.medicineId}</p>
-                          </div>
-                        </td>
+                      <Fragment key={med._id}>
+                        <tr className={isExpanded ? 'bg-primary-50/30' : undefined}>
+                          <td className="w-10">
+                            {tab === 'medicines' && (
+                              <button
+                                type="button"
+                                onClick={() => toggleExpand(med._id)}
+                                className="p-1 rounded hover:bg-gray-100 text-gray-500"
+                                aria-label={isExpanded ? 'Collapse details' : 'Expand details'}
+                              >
+                                <ChevronDown
+                                  className={`w-4 h-4 transition-transform ${
+                                    isExpanded ? 'rotate-0' : '-rotate-90'
+                                  }`}
+                                />
+                              </button>
+                            )}
+                          </td>
+                          <td>
+                            <button
+                              type="button"
+                              onClick={() => tab === 'medicines' && toggleExpand(med._id)}
+                              className={`text-left ${tab === 'medicines' ? 'hover:text-primary-700' : ''}`}
+                            >
+                              <p className="font-medium">{med.name}</p>
+                              <p className="text-sm text-gray-500">{med.medicineId}</p>
+                              {med.manufacturer && (
+                                <p className="text-xs text-gray-400">{med.manufacturer}</p>
+                              )}
+                            </button>
+                          </td>
                         <td className="capitalize">{med.category || '-'}</td>
                         <td
                           className={
@@ -396,6 +430,21 @@ export default function Inventory() {
                           </div>
                         </td>
                       </tr>
+                        {isExpanded && (
+                          <tr>
+                            <td colSpan={9} className="p-0">
+                              <MedicineDetailPanel
+                                medicineId={med._id}
+                                refreshKey={detailRefreshKey}
+                                onEdit={(m) => {
+                                  setCatalogMedicine(m);
+                                  setCatalogModalOpen(true);
+                                }}
+                              />
+                            </td>
+                          </tr>
+                        )}
+                      </Fragment>
                     );
                   })}
                 </tbody>
@@ -447,6 +496,7 @@ export default function Inventory() {
         onSaved={() => {
           fetchMedicines();
           fetchStats();
+          setDetailRefreshKey((k) => k + 1);
         }}
       />
     </div>

@@ -147,13 +147,33 @@ async function updateMedicineBill(event) {
         : PAYMENT_STATUS.PENDING;
 
   try {
+    const billContext = {
+      billId: existing._id,
+      billNo: existing.billNo,
+      patientName: data.patientName,
+      performedBy: existing.createdBy || 'Pharmacy',
+    };
+
     await withTransaction(async (session, txDb) => {
       if (existing.stockDeducted) {
-        await restoreStockForBillItems(txDb, existing.items, session, now);
+        await restoreStockForBillItems(
+          txDb,
+          existing.items,
+          session,
+          now,
+          billContext,
+        );
       }
 
       if (!skipStockDeduction) {
-        await applyStockUpdates(txDb, stockUpdates, session, now);
+        await applyStockUpdates(
+          txDb,
+          stockUpdates,
+          session,
+          now,
+          billContext,
+          billItems,
+        );
       }
 
       await txDb.collection(COLLECTIONS.MEDICINE_BILLS).updateOne(

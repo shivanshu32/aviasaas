@@ -448,6 +448,7 @@ export const COLLECTIONS = {
   MISC_BILLS: 'misc_bills',
   MEDICINES: 'medicines',
   MEDICINE_STOCK_BATCHES: 'medicine_stock_batches',
+  MEDICINE_STOCK_MOVEMENTS: 'medicine_stock_movements',
   MEDICINE_BILLS: 'medicine_bills',
   CLINIC_SETTINGS: 'clinic_settings',
   SERVICE_ITEMS: 'service_items',

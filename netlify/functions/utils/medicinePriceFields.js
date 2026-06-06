@@ -51,4 +51,5 @@ export const STOCK_PRICE_GROUP_FIELDS = {
   batchMrp: { $max: '$mrp' },
   batchSellingPrice: { $max: '$sellingPrice' },
   batchPurchasePrice: { $max: '$purchasePrice' },
+  nearestExpiry: { $min: '$expiryDate' },
 };

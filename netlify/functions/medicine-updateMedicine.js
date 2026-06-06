@@ -8,6 +8,23 @@ import { ObjectId } from 'mongodb';
 import { getDb, COLLECTIONS } from './utils/db.js';
 import { success, badRequest, notFound } from './utils/response.js';
 import { withErrorHandler } from './utils/errorHandler.js';
+import { MOVEMENT_TYPE, MOVEMENT_SOURCE } from '../../shared/constants/enums.js';
+import { logMedicineMovement } from './utils/medicineActivity.js';
+
+function catalogFieldChanges(before, updateFields) {
+  const skip = new Set(['updatedAt']);
+  const changes = [];
+  for (const [key, value] of Object.entries(updateFields)) {
+    if (skip.has(key)) continue;
+    const prev = before[key];
+    const prevStr = prev == null ? null : String(prev);
+    const nextStr = value == null ? null : String(value);
+    if (prevStr !== nextStr) {
+      changes.push({ field: key, from: prev, to: value });
+    }
+  }
+  return changes;
+}
 
 async function updateMedicine(event) {
   if (event.httpMethod !== 'PUT') {
@@ -94,6 +111,23 @@ async function updateMedicine(event) {
     { returnDocument: 'after' },
   );
 
+  const catalogChanges = catalogFieldChanges(medicine, updateFields);
+  const now = updateFields.updatedAt;
+
+  if (catalogChanges.length > 0) {
+    await logMedicineMovement(db, {
+      medicineId: medicine._id,
+      type: MOVEMENT_TYPE.CATALOG_UPDATE,
+      source: MOVEMENT_SOURCE.MANUAL,
+      quantityDelta: 0,
+      referenceType: 'medicine',
+      referenceId: medicine._id,
+      referenceLabel: medicine.medicineId,
+      metadata: { changes: catalogChanges },
+      createdAt: now,
+    });
+  }
+
   if (syncBatchPrices) {
     const batchSet = { updatedAt: new Date() };
     if (updateFields.purchasePrice !== undefined) {
@@ -104,10 +138,32 @@ async function updateMedicine(event) {
       batchSet.mrp = updateFields.sellingPrice;
     }
     if (Object.keys(batchSet).length > 1) {
+      const batches = await db.collection(COLLECTIONS.MEDICINE_STOCK_BATCHES)
+        .find({ medicineId: medicine._id })
+        .toArray();
+
       await db.collection(COLLECTIONS.MEDICINE_STOCK_BATCHES).updateMany(
         { medicineId: medicine._id },
         { $set: batchSet },
       );
+
+      if (batches.length > 0) {
+        await logMedicineMovement(db, {
+          medicineId: medicine._id,
+          type: MOVEMENT_TYPE.BATCH_PRICE_SYNC,
+          source: MOVEMENT_SOURCE.MANUAL,
+          quantityDelta: 0,
+          referenceType: 'medicine',
+          referenceId: medicine._id,
+          referenceLabel: medicine.medicineId,
+          metadata: {
+            batchesAffected: batches.length,
+            purchasePrice: batchSet.purchasePrice ?? null,
+            sellingPrice: batchSet.sellingPrice ?? null,
+          },
+          createdAt: batchSet.updatedAt,
+        });
+      }
     }
   }
 

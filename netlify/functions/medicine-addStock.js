@@ -30,6 +30,8 @@ import { getDb, COLLECTIONS } from './utils/db.js';
 import { created, success, badRequest, notFound, conflict } from './utils/response.js';
 import { withErrorHandler } from './utils/errorHandler.js';
 import { STOCK_STATUS } from '../../shared/constants/enums.js';
+import { MOVEMENT_TYPE, MOVEMENT_SOURCE } from '../../shared/constants/enums.js';
+import { logMedicineMovement } from './utils/medicineActivity.js';
 
 function mrpMatches(existingMrp, incomingMrp) {
   const a = Number(existingMrp);
@@ -124,6 +126,26 @@ async function addStock(event) {
 
     const updatedBatch = updateResult?.value ?? updateResult;
 
+    await logMedicineMovement(db, {
+      medicineId: medicine._id,
+      batchId: existingBatch._id,
+      batchNo,
+      type: MOVEMENT_TYPE.STOCK_ADD,
+      source: MOVEMENT_SOURCE.MANUAL,
+      quantityDelta: addQty,
+      previousQty: existingBatch.currentQty,
+      newQty,
+      referenceType: 'batch',
+      referenceId: existingBatch._id,
+      referenceLabel: batchNo,
+      metadata: {
+        merged: true,
+        supplier: data.supplier || null,
+        purchaseInvoiceNo: data.purchaseInvoiceNo || null,
+      },
+      createdAt: now,
+    });
+
     return success(
       {
         stockBatch: batchWithMedicine(updatedBatch, medicine),
@@ -167,6 +189,28 @@ async function addStock(event) {
   };
 
   await db.collection(COLLECTIONS.MEDICINE_STOCK_BATCHES).insertOne(stockBatch);
+
+  await logMedicineMovement(db, {
+    medicineId: medicine._id,
+    batchId: stockBatch._id,
+    batchNo,
+    type: MOVEMENT_TYPE.STOCK_ADD,
+    source: MOVEMENT_SOURCE.MANUAL,
+    quantityDelta: addQty,
+    previousQty: 0,
+    newQty: addQty,
+    referenceType: 'batch',
+    referenceId: stockBatch._id,
+    referenceLabel: batchNo,
+    metadata: {
+      merged: false,
+      supplier: data.supplier || null,
+      purchaseInvoiceNo: data.purchaseInvoiceNo || null,
+      remarks: data.remarks || null,
+    },
+    remarks: data.remarks || null,
+    createdAt: now,
+  });
 
   return created(
     { stockBatch: batchWithMedicine(stockBatch, medicine), merged: false },

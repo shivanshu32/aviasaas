@@ -119,6 +119,28 @@ export const STOCK_STATUS = {
 
 export const STOCK_STATUS_OPTIONS = Object.values(STOCK_STATUS);
 
+// Medicine stock movement types
+export const MOVEMENT_TYPE = {
+  STOCK_ADD: 'stock_add',
+  STOCK_DEDUCT: 'stock_deduct',
+  BILL_SALE: 'bill_sale',
+  BILL_RESTORE: 'bill_restore',
+  CATALOG_UPDATE: 'catalog_update',
+  BATCH_PRICE_SYNC: 'batch_price_sync',
+  MEDICINE_DELETE: 'medicine_delete',
+};
+
+export const MOVEMENT_TYPE_OPTIONS = Object.values(MOVEMENT_TYPE);
+
+// Medicine movement source
+export const MOVEMENT_SOURCE = {
+  MANUAL: 'manual',
+  SYSTEM: 'system',
+  BACKFILL: 'backfill',
+};
+
+export const MOVEMENT_SOURCE_OPTIONS = Object.values(MOVEMENT_SOURCE);
+
 // Drug schedule types
 export const SCHEDULE_TYPE = {
   H: 'H',
