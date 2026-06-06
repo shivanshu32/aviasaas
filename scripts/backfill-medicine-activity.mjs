@@ -13,7 +13,32 @@
  */
 
 import { MongoClient, ObjectId } from 'mongodb';
+import fs from 'fs';
+import path from 'path';
 import { MOVEMENT_TYPE, MOVEMENT_SOURCE } from '../shared/constants/enums.js';
+
+/** Load .env from project root when MONGODB_URI is not already set (local runs). */
+function loadDotEnv() {
+  const envPath = path.join(process.cwd(), '.env');
+  if (!fs.existsSync(envPath)) return;
+  const text = fs.readFileSync(envPath, 'utf8');
+  for (const line of text.split(/\r?\n/)) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) continue;
+    const eq = trimmed.indexOf('=');
+    if (eq <= 0) continue;
+    const key = trimmed.slice(0, eq).trim();
+    if (process.env[key] !== undefined) continue;
+    let val = trimmed.slice(eq + 1).trim();
+    if (
+      (val.startsWith('"') && val.endsWith('"')) ||
+      (val.startsWith("'") && val.endsWith("'"))
+    ) {
+      val = val.slice(1, -1);
+    }
+    process.env[key] = val;
+  }
+}
 
 const BATCHES_COLL = 'medicine_stock_batches';
 const BILLS_COLL = 'medicine_bills';
@@ -51,10 +76,17 @@ async function backfillExists(coll, marker) {
 }
 
 async function main() {
+  loadDotEnv();
+
   const { dryRun } = parseArgs(process.argv.slice(2));
   const uri = process.env.MONGODB_URI;
   if (!uri) {
     console.error('MONGODB_URI is required.');
+    console.error('');
+    console.error('Option 1: Create a .env file in the project root (copy from .env.example)');
+    console.error('Option 2: Set it for this session:');
+    console.error('  Windows:  set MONGODB_URI=your_connection_string && npm run backfill:medicine-activity:dry-run');
+    console.error('  PowerShell: $env:MONGODB_URI="your_connection_string"; npm run backfill:medicine-activity:dry-run');
     process.exit(1);
   }
 
