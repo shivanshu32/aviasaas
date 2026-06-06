@@ -5,9 +5,165 @@ import toast from 'react-hot-toast';
 import { Button, Input, Card, Table, Modal, Badge } from '../../components/ui';
 import { medicineService } from '../../services';
 import { formatMedicinePrice, getMedicineRowPrices } from '../../utils/medicinePrice';
-import { formatMonthYear } from '../../utils/monthYearDate';
+import { formatMonthYear, toMonthInputValue } from '../../utils/monthYearDate';
 import MedicineCatalogModal from '../../components/inventory/MedicineCatalogModal';
 import MedicineDeleteButton from '../../components/inventory/MedicineDeleteButton';
+
+const EMPTY_STOCK_FORM = {
+  medicineId: '',
+  batchNo: '',
+  expiryDate: '',
+  mfgDate: '',
+  quantity: '',
+  purchasePrice: '',
+  mrp: '',
+  sellingPrice: '',
+  supplier: '',
+};
+
+function findBatchByNo(batches, batchNo) {
+  const q = String(batchNo ?? '').trim().toLowerCase();
+  if (!q) return null;
+  return batches.find((b) => String(b.batchNo).trim().toLowerCase() === q) || null;
+}
+
+function formFieldsFromBatch(batch) {
+  if (!batch) return {};
+  return {
+    expiryDate: toMonthInputValue(batch.expiryDate) || '',
+    mfgDate: toMonthInputValue(batch.mfgDate) || '',
+    purchasePrice:
+      batch.purchasePrice != null && batch.purchasePrice !== ''
+        ? String(batch.purchasePrice)
+        : '',
+    mrp: batch.mrp != null && batch.mrp !== '' ? String(batch.mrp) : '',
+    sellingPrice:
+      batch.sellingPrice != null && batch.sellingPrice !== ''
+        ? String(batch.sellingPrice)
+        : batch.mrp != null
+          ? String(batch.mrp)
+          : '',
+    supplier: batch.supplier || '',
+  };
+}
+
+function BatchNumberField({
+  medicineId,
+  batches,
+  value,
+  onBatchNoChange,
+  onApplyBatch,
+  required,
+}) {
+  const [open, setOpen] = useState(false);
+  const [matchedBatch, setMatchedBatch] = useState(null);
+  const wrapperRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const tryApplyBatch = (batchNo, batchList) => {
+    const batch = findBatchByNo(batchList, batchNo);
+    setMatchedBatch(batch);
+    if (batch) {
+      onApplyBatch(formFieldsFromBatch(batch));
+    }
+    return batch;
+  };
+
+  useEffect(() => {
+    if (!value?.trim() || batches.length === 0) return;
+    tryApplyBatch(value, batches);
+    // Re-run when batches load after user typed a batch number
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [batches]);
+
+  const handleInputChange = (e) => {
+    const next = e.target.value;
+    onBatchNoChange(next);
+    if (!next.trim()) {
+      setMatchedBatch(null);
+      return;
+    }
+    tryApplyBatch(next, batches);
+  };
+
+  const handleSelect = (batch) => {
+    onBatchNoChange(batch.batchNo);
+    setMatchedBatch(batch);
+    onApplyBatch(formFieldsFromBatch(batch));
+    setOpen(false);
+  };
+
+  const query = String(value ?? '').trim();
+  const filtered = query
+    ? batches.filter((b) =>
+        String(b.batchNo).toLowerCase().includes(query.toLowerCase()),
+      )
+    : batches;
+
+  return (
+    <div ref={wrapperRef} className="relative">
+      <label className="block text-sm font-medium text-gray-700 mb-1">
+        Batch Number
+        {required && <span className="text-red-500 ml-1">*</span>}
+      </label>
+      <input
+        type="text"
+        value={value}
+        disabled={!medicineId}
+        onChange={handleInputChange}
+        onFocus={() => medicineId && setOpen(true)}
+        required={required}
+        placeholder={
+          medicineId ? 'Type or select an existing batch' : 'Select a medicine first'
+        }
+        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg bg-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+        autoComplete="off"
+      />
+      {matchedBatch && (
+        <p className="mt-1 text-xs text-green-600">
+          Existing batch — expiry &amp; prices filled (Exp:{' '}
+          {formatMonthYear(matchedBatch.expiryDate)})
+        </p>
+      )}
+      {open && medicineId && filtered.length > 0 && (
+        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+          {filtered.map((batch) => (
+            <button
+              key={batch._id}
+              type="button"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => handleSelect(batch)}
+              className="w-full px-3 py-2 text-left hover:bg-gray-50 border-b last:border-b-0 text-sm"
+            >
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-medium text-gray-900">{batch.batchNo}</span>
+                <span className="text-xs text-gray-500 capitalize shrink-0">{batch.status}</span>
+              </div>
+              <p className="text-xs text-gray-500 mt-0.5">
+                Exp: {formatMonthYear(batch.expiryDate)} · Qty: {batch.currentQty ?? 0} · MRP:{' '}
+                {formatMedicinePrice(batch.mrp)}
+              </p>
+            </button>
+          ))}
+        </div>
+      )}
+      {open && medicineId && batches.length === 0 && (
+        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg p-3 text-sm text-gray-500">
+          No previous batches — enter a new batch number
+        </div>
+      )}
+    </div>
+  );
+}
 
 // Medicine Search Component for Add Stock modal
 function MedicineSearch({ value, onChange, onSelect, selectedMedicine }) {
@@ -163,18 +319,9 @@ export default function MedicineStockManagement() {
   const [catalogMedicine, setCatalogMedicine] = useState(null);
   const [showAddStock, setShowAddStock] = useState(false);
   const [selectedMedicine, setSelectedMedicine] = useState(null);
+  const [medicineBatches, setMedicineBatches] = useState([]);
 
-  const [stockForm, setStockForm] = useState({
-    medicineId: '',
-    batchNo: '',
-    expiryDate: '',
-    mfgDate: '',
-    quantity: '',
-    purchasePrice: '',
-    mrp: '',
-    sellingPrice: '',
-    supplier: '',
-  });
+  const [stockForm, setStockForm] = useState({ ...EMPTY_STOCK_FORM });
 
   const [formLoading, setFormLoading] = useState(false);
   const [catalogTotal, setCatalogTotal] = useState(0);
@@ -186,6 +333,52 @@ export default function MedicineStockManagement() {
   useEffect(() => {
     fetchData();
   }, [activeTab, searchQuery]);
+
+  useEffect(() => {
+    if (!stockForm.medicineId) {
+      setMedicineBatches([]);
+      return undefined;
+    }
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const response = await medicineService.stock.getBatches(stockForm.medicineId, {
+          includeExhausted: 'true',
+        });
+        if (!cancelled) {
+          setMedicineBatches(response.batches || []);
+        }
+      } catch (error) {
+        console.error('Failed to load batches:', error);
+        if (!cancelled) setMedicineBatches([]);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [stockForm.medicineId]);
+
+  const applyBatchFields = (fields) => {
+    setStockForm((prev) => ({ ...prev, ...fields }));
+  };
+
+  const resetStockForm = (medicineDefaults = {}) => {
+    setStockForm({ ...EMPTY_STOCK_FORM, ...medicineDefaults });
+  };
+
+  const medicineDefaultsFromRow = (medicine) => {
+    const { purchase, selling } = getMedicineRowPrices(medicine);
+    const sellingStr = selling != null && selling !== '' ? String(selling) : '';
+    const purchaseStr = purchase != null && purchase !== '' ? String(purchase) : '';
+    return {
+      medicineId: medicine._id,
+      purchasePrice: purchaseStr,
+      sellingPrice: sellingStr,
+      mrp: sellingStr,
+    };
+  };
 
   const fetchData = async () => {
     setLoading(true);
@@ -231,18 +424,9 @@ export default function MedicineStockManagement() {
       });
       toast.success(res.message || 'Stock added successfully!');
       setShowAddStock(false);
-      setStockForm({
-        medicineId: '',
-        batchNo: '',
-        expiryDate: '',
-        mfgDate: '',
-        quantity: '',
-        purchasePrice: '',
-        mrp: '',
-        sellingPrice: '',
-        supplier: '',
-      });
+      resetStockForm();
       setSelectedMedicine(null);
+      setMedicineBatches([]);
       fetchData();
     } catch (error) {
       toast.error(error.error || 'Failed to add stock');
@@ -254,16 +438,9 @@ export default function MedicineStockManagement() {
   const openAddStock = (medicine = null) => {
     if (medicine) {
       setSelectedMedicine(medicine);
-      const { purchase, selling } = getMedicineRowPrices(medicine);
-      const sellingStr = selling != null && selling !== '' ? String(selling) : '';
-      const purchaseStr = purchase != null && purchase !== '' ? String(purchase) : '';
-      setStockForm((prev) => ({
-        ...prev,
-        medicineId: medicine._id,
-        purchasePrice: purchaseStr,
-        sellingPrice: sellingStr,
-        mrp: sellingStr,
-      }));
+      resetStockForm(medicineDefaultsFromRow(medicine));
+    } else {
+      resetStockForm();
     }
     setShowAddStock(true);
   };
@@ -551,7 +728,8 @@ export default function MedicineStockManagement() {
         onClose={() => {
           setShowAddStock(false);
           setSelectedMedicine(null);
-          setStockForm((p) => ({ ...p, medicineId: '' }));
+          setMedicineBatches([]);
+          resetStockForm();
         }}
         title={selectedMedicine ? `Add Stock - ${selectedMedicine.name}` : 'Add Stock'}
         size="lg"
@@ -563,30 +741,23 @@ export default function MedicineStockManagement() {
             onSelect={(medicine) => {
               if (medicine) {
                 setSelectedMedicine(medicine);
-                const { purchase, selling } = getMedicineRowPrices(medicine);
-                const sellingStr = selling != null && selling !== '' ? String(selling) : '';
-                const purchaseStr = purchase != null && purchase !== '' ? String(purchase) : '';
-                setStockForm((p) => ({
-                  ...p,
-                  medicineId: medicine._id,
-                  purchasePrice: purchaseStr,
-                  sellingPrice: sellingStr,
-                  mrp: sellingStr,
-                }));
+                resetStockForm(medicineDefaultsFromRow(medicine));
               } else {
                 setSelectedMedicine(null);
-                setStockForm((p) => ({ ...p, medicineId: '' }));
+                resetStockForm();
+                setMedicineBatches([]);
               }
             }}
             selectedMedicine={selectedMedicine}
           />
           <div className="grid grid-cols-2 gap-4">
-            <Input
-              label="Batch Number"
+            <BatchNumberField
+              medicineId={stockForm.medicineId}
+              batches={medicineBatches}
               value={stockForm.batchNo}
-              onChange={(e) => setStockForm((p) => ({ ...p, batchNo: e.target.value }))}
+              onBatchNoChange={(batchNo) => setStockForm((p) => ({ ...p, batchNo }))}
+              onApplyBatch={(fields) => applyBatchFields(fields)}
               required
-              placeholder="e.g., BAT2024001"
             />
             <Input
               label="Quantity"
