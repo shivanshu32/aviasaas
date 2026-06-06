@@ -1,4 +1,5 @@
 ﻿import { useState, useEffect, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Plus, Package, AlertTriangle, Clock, Search, X, Check, Pencil } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Button, Input, Card, Table, Modal, Badge } from '../../components/ui';
@@ -147,6 +148,9 @@ function MedicineSearch({ value, onChange, onSelect, selectedMedicine }) {
 }
 
 export default function MedicineStockManagement() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const handledMedicineParam = useRef(null);
+
   const [activeTab, setActiveTab] = useState('all');
   const [medicines, setMedicines] = useState([]);
   const [lowStock, setLowStock] = useState([]);
@@ -262,6 +266,31 @@ export default function MedicineStockManagement() {
     }
     setShowAddStock(true);
   };
+
+  useEffect(() => {
+    const medicineId = searchParams.get('medicine');
+    if (!medicineId || handledMedicineParam.current === medicineId) return;
+
+    handledMedicineParam.current = medicineId;
+
+    (async () => {
+      try {
+        const response = await medicineService.getById(medicineId, true);
+        const medicine = response.medicine;
+        if (medicine) {
+          openAddStock(medicine);
+        } else {
+          toast.error('Medicine not found');
+        }
+      } catch (error) {
+        console.error('Failed to load medicine for add stock:', error);
+        toast.error(error.error || 'Could not load medicine');
+      } finally {
+        setSearchParams({}, { replace: true });
+        handledMedicineParam.current = null;
+      }
+    })();
+  }, [searchParams, setSearchParams]);
 
   const openCatalogModal = (row = null) => {
     setCatalogMedicine(row);
