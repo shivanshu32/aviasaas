@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { medicineService } from '../services';
 import { formatMedicinePrice, getMedicineRowPrices } from '../utils/medicinePrice';
+import { formatMonthYear, daysUntilExpiryEnd } from '../utils/monthYearDate';
 import MedicineCatalogModal from '../components/inventory/MedicineCatalogModal';
 import MedicineDeleteButton from '../components/inventory/MedicineDeleteButton';
 import MedicineDetailPanel from '../components/inventory/MedicineDetailPanel';
@@ -158,12 +159,9 @@ export default function Inventory() {
         )
       : currentData;
 
-  const formatDate = (date) => {
+  const formatExpiry = (date) => {
     if (!date) return '-';
-    return new Date(date).toLocaleDateString('en-IN', {
-      month: 'short',
-      year: 'numeric',
-    });
+    return formatMonthYear(date);
   };
 
   const getStockStatus = (medicine) => {
@@ -177,9 +175,10 @@ export default function Inventory() {
 
   const getExpiryStatus = (expiryDate) => {
     if (!expiryDate) return null;
-    const days = Math.ceil((new Date(expiryDate) - new Date()) / (1000 * 60 * 60 * 24));
+    const days = daysUntilExpiryEnd(expiryDate);
+    if (days == null) return null;
 
-    if (days <= 0) return { label: 'Expired', class: 'text-red-600' };
+    if (days < 0) return { label: 'Expired', class: 'text-red-600' };
     if (days <= 30) return { label: `${days}d left`, class: 'text-red-600' };
     if (days <= 90) return { label: `${days}d left`, class: 'text-orange-600' };
     return null;
@@ -391,7 +390,7 @@ export default function Inventory() {
                         <td>
                           <div>
                             <span className={expiryStatus?.class || 'text-gray-500'}>
-                              {formatDate(med.nearestExpiry || med.expiryDate)}
+                              {formatExpiry(med.nearestExpiry || med.expiryDate)}
                             </span>
                             {expiryStatus && (
                               <p className={`text-xs ${expiryStatus.class}`}>{expiryStatus.label}</p>

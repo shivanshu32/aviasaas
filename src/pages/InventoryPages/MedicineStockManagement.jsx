@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 import { Button, Input, Card, Table, Modal, Badge } from '../../components/ui';
 import { medicineService } from '../../services';
 import { formatMedicinePrice, getMedicineRowPrices } from '../../utils/medicinePrice';
+import { formatMonthYear } from '../../utils/monthYearDate';
 import MedicineCatalogModal from '../../components/inventory/MedicineCatalogModal';
 import MedicineDeleteButton from '../../components/inventory/MedicineDeleteButton';
 
@@ -409,8 +410,8 @@ export default function MedicineStockManagement() {
     { key: 'currentQty', title: 'Quantity' },
     {
       key: 'expiryDate',
-      title: 'Expiry Date',
-      render: (val) => new Date(val).toLocaleDateString(),
+      title: 'Expiry',
+      render: (val) => formatMonthYear(val),
     },
     {
       key: 'daysToExpiry',
@@ -596,15 +597,15 @@ export default function MedicineStockManagement() {
               min="1"
             />
             <Input
-              label="Expiry Date"
-              type="date"
+              label="Expiry (Month / Year)"
+              type="month"
               value={stockForm.expiryDate}
               onChange={(e) => setStockForm((p) => ({ ...p, expiryDate: e.target.value }))}
               required
             />
             <Input
-              label="Mfg Date"
-              type="date"
+              label="Mfg (Month / Year)"
+              type="month"
               value={stockForm.mfgDate}
               onChange={(e) => setStockForm((p) => ({ ...p, mfgDate: e.target.value }))}
             />

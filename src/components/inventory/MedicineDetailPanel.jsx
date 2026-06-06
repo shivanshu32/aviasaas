@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { medicineService } from '../../services';
 import { formatMedicinePrice } from '../../utils/medicinePrice';
+import { formatMonthYear } from '../../utils/monthYearDate';
 
 const MOVEMENT_LABELS = {
   stock_add: 'Stock added',
@@ -39,23 +40,12 @@ function formatDateTime(date) {
   });
 }
 
-function formatDate(date) {
-  if (!date) return '—';
-  return new Date(date).toLocaleDateString('en-IN', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-  });
-}
-
-function DetailField({ label, value }) {
-  return (
-    <div>
-      <dt className="text-xs text-gray-500 uppercase tracking-wide">{label}</dt>
-      <dd className="text-sm text-gray-900 mt-0.5">{value ?? '—'}</dd>
-    </div>
-  );
-}
+const DetailField = ({ label, value }) => (
+  <div>
+    <dt className="text-xs text-gray-500 uppercase tracking-wide">{label}</dt>
+    <dd className="text-sm text-gray-900 mt-0.5">{value ?? '—'}</dd>
+  </div>
+);
 
 export default function MedicineDetailPanel({
   medicineId,
@@ -240,6 +230,7 @@ export default function MedicineDetailPanel({
                   <tr>
                     <th>Batch</th>
                     <th>Expiry</th>
+                    <th>Mfg</th>
                     <th>Initial / Current</th>
                     <th>Purchase</th>
                     <th>MRP / Sale</th>
@@ -252,7 +243,8 @@ export default function MedicineDetailPanel({
                   {batches.map((batch) => (
                     <tr key={batch._id}>
                       <td className="font-medium">{batch.batchNo}</td>
-                      <td>{formatDate(batch.expiryDate)}</td>
+                      <td>{formatMonthYear(batch.expiryDate)}</td>
+                      <td>{formatMonthYear(batch.mfgDate)}</td>
                       <td>
                         {batch.initialQty ?? batch.currentQty} / {batch.currentQty}
                       </td>

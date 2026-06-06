@@ -8,8 +8,8 @@
  *   {
  *     medicineId: string (required),
  *     batchNo: string (required),
- *     expiryDate: string (required, ISO date),
- *     mfgDate?: string (ISO date),
+ *     expiryDate: string (required, YYYY-MM month/year),
+ *     mfgDate?: string (YYYY-MM month/year),
  *     purchaseDate?: string (ISO date),
  *     supplier?: string,
  *     purchaseInvoiceNo?: string,
@@ -32,6 +32,11 @@ import { withErrorHandler } from './utils/errorHandler.js';
 import { STOCK_STATUS } from '../../shared/constants/enums.js';
 import { MOVEMENT_TYPE, MOVEMENT_SOURCE } from '../../shared/constants/enums.js';
 import { logMedicineMovement } from './utils/medicineActivity.js';
+import {
+  endOfExpiryMonth,
+  startOfMfgMonth,
+  isExpiryMonthPast,
+} from '../../shared/utils/monthYearDate.js';
 
 function mrpMatches(existingMrp, incomingMrp) {
   const a = Number(existingMrp);
@@ -70,7 +75,7 @@ async function addStock(event) {
   if (!data.medicineId) return badRequest('Medicine ID is required');
   const batchNo = String(data.batchNo ?? '').trim();
   if (!batchNo) return badRequest('Batch number is required');
-  if (!data.expiryDate) return badRequest('Expiry date is required');
+  if (!data.expiryDate) return badRequest('Expiry month is required');
   if (!data.quantity || data.quantity <= 0) return badRequest('Valid quantity is required');
   if (!data.purchasePrice) return badRequest('Purchase price is required');
   if (!data.mrp) return badRequest('MRP is required');
@@ -156,14 +161,24 @@ async function addStock(event) {
     );
   }
 
-  // Parse dates for new batch
-  const expiryDate = new Date(data.expiryDate);
-  const mfgDate = data.mfgDate ? new Date(data.mfgDate) : null;
-  const purchaseDate = data.purchaseDate ? new Date(data.purchaseDate) : new Date();
-
-  if (expiryDate <= new Date()) {
-    return badRequest('Expiry date must be in the future');
+  // Parse month/year (expiry = end of month; mfg = start of month)
+  const expiryDate = endOfExpiryMonth(data.expiryDate);
+  if (!expiryDate) {
+    return badRequest('Invalid expiry month (use YYYY-MM)');
   }
+  if (isExpiryMonthPast(data.expiryDate)) {
+    return badRequest('Expiry month must be in the future');
+  }
+
+  let mfgDate = null;
+  if (data.mfgDate) {
+    mfgDate = startOfMfgMonth(data.mfgDate);
+    if (!mfgDate) {
+      return badRequest('Invalid manufacturing month (use YYYY-MM)');
+    }
+  }
+
+  const purchaseDate = data.purchaseDate ? new Date(data.purchaseDate) : new Date();
 
   const status = stockStatusForQty(addQty, reorderLevel);
 

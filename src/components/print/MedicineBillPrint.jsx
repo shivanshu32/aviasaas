@@ -1,5 +1,6 @@
 import { forwardRef } from 'react';
 import Letterhead from './Letterhead';
+import { formatMonthYear } from '../../utils/monthYearDate';
 import './PrintStyles.css';
 
 const MedicineBillPrint = forwardRef(({ bill }, ref) => {
@@ -19,12 +20,7 @@ const MedicineBillPrint = forwardRef(({ bill }, ref) => {
     });
   };
 
-  const formatExpiry = (date) => {
-    return new Date(date).toLocaleDateString('en-IN', {
-      month: 'short',
-      year: 'numeric',
-    });
-  };
+  const formatExpiry = (date) => formatMonthYear(date);
 
   const numberToWords = (num) => {
     const ones = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine',
