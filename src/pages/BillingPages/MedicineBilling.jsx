@@ -7,6 +7,7 @@ import { Button, Input, Select, Badge } from '../../components/ui';
 import { billingService, patientService, doctorService, medicineService } from '../../services';
 import { getLocalDateInputString, parseBillDateInput, isBackdatedBill } from '../../utils/billDate';
 import { calcMedicineLineTotal } from '../../utils/medicineBillLine';
+import { computeMedicineBillTotalsFromFormItems } from '../../utils/medicineBillTotals';
 import BillPrintView from './BillPrintView';
 
 function restoredQtyForBatch(batchId, originalItems) {
@@ -302,12 +303,8 @@ export default function MedicineBilling() {
     }));
   };
 
-  const lineTotals = formData.items.map((item) =>
-    calcMedicineLineTotal(item.quantity, item.sellingPrice, item.discountPercent),
-  );
-  const grandTotal = Math.round(
-    lineTotals.reduce((sum, line) => sum + line.amount, 0),
-  );
+  const billSummary = computeMedicineBillTotalsFromFormItems(formData.items);
+  const grandTotal = billSummary.grandTotal;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -625,7 +622,14 @@ export default function MedicineBilling() {
           </div>
           
           <div className="space-y-3">
-            <p className="text-xs text-gray-500">Discount is applied per medicine line.</p>
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-600">Subtotal</span>
+              <span className="font-medium">₹{billSummary.subtotal.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-600">Discount</span>
+              <span className="font-medium text-red-600">-₹{billSummary.discountAmount.toFixed(2)}</span>
+            </div>
             <div className="flex justify-between text-lg font-bold pt-3 border-t border-gray-200">
               <span>Grand Total</span>
               <span className="text-primary-600">₹{grandTotal}</span>

@@ -13,6 +13,7 @@ import {
   isFutureBillDate,
   isBackdatedBill,
 } from '../../../../shared/utils/billDate.js';
+import { computeMedicineBillTotals } from '../../../../shared/utils/medicineBillTotals.js';
 import {
   buildMedicineBillLineItems,
   restoreStockForBillItems,
@@ -124,9 +125,15 @@ async function updateMedicineBill(event) {
     throw err;
   }
 
-  const subtotal = billItems.reduce((sum, item) => sum + item.amount, 0);
-  const grandTotal = Math.round(subtotal);
-  const roundOff = grandTotal - subtotal;
+  const {
+    subtotal,
+    discountAmount,
+    taxableAmount,
+    cgst,
+    sgst,
+    grandTotal,
+    roundOff,
+  } = computeMedicineBillTotals(billItems);
 
   const paymentDetails = data.paymentDetails || {};
   const paidAmount =
@@ -167,10 +174,10 @@ async function updateMedicineBill(event) {
             subtotal,
             discountType: null,
             discountValue: 0,
-            discountAmount: 0,
-            taxableAmount: subtotal,
-            cgst: 0,
-            sgst: 0,
+            discountAmount,
+            taxableAmount,
+            cgst,
+            sgst,
             grandTotal,
             roundOff,
             paymentMode: data.paymentMode,

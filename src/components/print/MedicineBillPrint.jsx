@@ -1,6 +1,7 @@
 import { forwardRef } from 'react';
 import Letterhead from './Letterhead';
 import { formatMonthYear } from '../../utils/monthYearDate';
+import { getMedicineBillDisplayTotals } from '../../utils/medicineBillTotals';
 import './PrintStyles.css';
 
 const MedicineBillPrint = forwardRef(({ bill }, ref) => {
@@ -39,6 +40,7 @@ const MedicineBillPrint = forwardRef(({ bill }, ref) => {
 
   const patient = bill.patient || {};
   const doctor = bill.doctor || {};
+  const { subtotal, discountAmount, grandTotal, roundOff } = getMedicineBillDisplayTotals(bill);
 
   return (
     <div ref={ref} className="print-document">
@@ -134,7 +136,11 @@ const MedicineBillPrint = forwardRef(({ bill }, ref) => {
       <div className="bill-totals">
         <div className="total-row subtotal">
           <span className="total-label">Subtotal</span>
-          <span className="total-value">₹{bill.subtotal?.toFixed(2)}</span>
+          <span className="total-value">₹{subtotal.toFixed(2)}</span>
+        </div>
+        <div className="total-row">
+          <span className="total-label">Discount</span>
+          <span className="total-value">-₹{discountAmount.toFixed(2)}</span>
         </div>
         {(bill.cgst > 0 || bill.sgst > 0) && (
           <>
@@ -148,20 +154,20 @@ const MedicineBillPrint = forwardRef(({ bill }, ref) => {
             </div>
           </>
         )}
-        {bill.roundOff !== 0 && bill.roundOff !== undefined && (
+        {roundOff !== 0 && roundOff !== undefined && (
           <div className="total-row">
             <span className="total-label">Round Off</span>
-            <span className="total-value">₹{bill.roundOff?.toFixed(2)}</span>
+            <span className="total-value">₹{roundOff.toFixed(2)}</span>
           </div>
         )}
         <div className="total-row grand-total">
           <span>Grand Total</span>
-          <span>₹{bill.grandTotal?.toFixed(2)}</span>
+          <span>₹{grandTotal.toFixed(2)}</span>
         </div>
       </div>
 
       <div className="amount-words">
-        Amount in words: <strong>Rupees {numberToWords(Math.round(bill.grandTotal || 0))} Only</strong>
+        Amount in words: <strong>Rupees {numberToWords(Math.round(grandTotal || 0))} Only</strong>
       </div>
     </div>
   );
