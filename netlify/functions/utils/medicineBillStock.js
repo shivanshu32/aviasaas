@@ -57,9 +57,20 @@ export async function restoreStockForBillItems(txDb, items, session, now, billCo
  * Build bill line items and stock deductions from request payload lines.
  * @returns {{ billItems: object[], stockUpdates: object[] }}
  */
-export async function buildMedicineBillLineItems(db, dataItems, { skipStockDeduction }) {
+export async function buildMedicineBillLineItems(db, dataItems, { skipStockDeduction, originalItems }) {
   const billItems = [];
   const stockUpdates = [];
+  const deductedMap = new Map(); // running deductions per batch in this bill
+
+  // Pre-compute restored quantities from original bill when editing
+  const restoredMap = new Map();
+  if (originalItems?.length) {
+    for (const o of originalItems) {
+      if (!o?.batchId || !o?.quantity) continue;
+      const key = String(o.batchId);
+      restoredMap.set(key, (restoredMap.get(key) || 0) + Number(o.quantity));
+    }
+  }
 
   for (const item of dataItems) {
     const medicineQuery = ObjectId.isValid(item.medicineId)
@@ -84,13 +95,18 @@ export async function buildMedicineBillLineItems(db, dataItems, { skipStockDeduc
       throw err;
     }
 
-    if (!skipStockDeduction && batch.currentQty < item.quantity) {
+    const batchKey = String(batch._id);
+    const alreadyDeducted = deductedMap.get(batchKey) || 0;
+    const restoredQty = restoredMap.get(batchKey) || 0;
+    const effectiveQty = batch.currentQty + restoredQty - alreadyDeducted;
+
+    if (!skipStockDeduction && effectiveQty < item.quantity) {
       const err = new Error(`Insufficient stock for ${medicine.name}`);
       err.code = 'INSUFFICIENT_STOCK';
       err.details = {
         medicine: medicine.name,
         batchNo: batch.batchNo,
-        available: batch.currentQty,
+        available: effectiveQty,
         requested: item.quantity,
       };
       throw err;
@@ -121,12 +137,20 @@ export async function buildMedicineBillLineItems(db, dataItems, { skipStockDeduc
     });
 
     if (!skipStockDeduction) {
-      const newQty = batch.currentQty - item.quantity;
-      stockUpdates.push({
+      const newTotalDeducted = alreadyDeducted + item.quantity;
+      deductedMap.set(batchKey, newTotalDeducted);
+      const newQty = batch.currentQty + restoredQty - newTotalDeducted;
+      const updatePayload = {
         batchId: batch._id,
         newQty,
         newStatus: stockStatusForQty(newQty, Number(medicine.reorderLevel) || 0),
-      });
+      };
+      const existingIndex = stockUpdates.findIndex((u) => String(u.batchId) === batchKey);
+      if (existingIndex >= 0) {
+        stockUpdates[existingIndex] = updatePayload;
+      } else {
+        stockUpdates.push(updatePayload);
+      }
     }
   }
 
