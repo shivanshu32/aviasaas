@@ -120,13 +120,14 @@ async function generateMedicineBill(event) {
   // Fetch all medicines and batches, validate stock
   const billItems = [];
   const stockUpdates = [];
+  const deductedMap = new Map(); // track running deductions per batch in this bill
 
   for (const item of data.items) {
     // Get medicine
     const medicineQuery = ObjectId.isValid(item.medicineId)
       ? { _id: new ObjectId(item.medicineId) }
       : { medicineId: item.medicineId };
-    
+
     const medicine = await db.collection(COLLECTIONS.MEDICINES).findOne(medicineQuery);
     if (!medicine) {
       return notFound(`Medicine (${item.medicineId})`);
@@ -136,17 +137,21 @@ async function generateMedicineBill(event) {
     const batchQuery = ObjectId.isValid(item.batchId)
       ? { _id: new ObjectId(item.batchId) }
       : { batchNo: item.batchId, medicineId: medicine._id };
-    
+
     const batch = await db.collection(COLLECTIONS.MEDICINE_STOCK_BATCHES).findOne(batchQuery);
     if (!batch) {
       return notFound(`Stock batch (${item.batchId})`);
     }
 
-    if (!skipStockDeduction && batch.currentQty < item.quantity) {
+    const batchKey = String(batch._id);
+    const alreadyDeducted = deductedMap.get(batchKey) || 0;
+    const effectiveQty = batch.currentQty - alreadyDeducted;
+
+    if (!skipStockDeduction && effectiveQty < item.quantity) {
       return unprocessable(`Insufficient stock for ${medicine.name}`, {
         medicine: medicine.name,
         batchNo: batch.batchNo,
-        available: batch.currentQty,
+        available: effectiveQty,
         requested: item.quantity,
       });
     }
@@ -179,7 +184,9 @@ async function generateMedicineBill(event) {
     });
 
     if (!skipStockDeduction) {
-      const newQty = batch.currentQty - item.quantity;
+      const newTotalDeducted = alreadyDeducted + item.quantity;
+      deductedMap.set(batchKey, newTotalDeducted);
+      const newQty = batch.currentQty - newTotalDeducted;
       let newStatus = batch.status;
       if (newQty === 0) {
         newStatus = STOCK_STATUS.EXHAUSTED;
@@ -187,11 +194,17 @@ async function generateMedicineBill(event) {
         newStatus = STOCK_STATUS.LOW;
       }
 
-      stockUpdates.push({
+      const updatePayload = {
         batchId: batch._id,
         newQty,
         newStatus,
-      });
+      };
+      const existingIndex = stockUpdates.findIndex((u) => String(u.batchId) === batchKey);
+      if (existingIndex >= 0) {
+        stockUpdates[existingIndex] = updatePayload;
+      } else {
+        stockUpdates.push(updatePayload);
+      }
     }
   }
 

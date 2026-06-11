@@ -116,6 +116,7 @@ async function updateMedicineBill(event) {
   try {
     ({ billItems, stockUpdates } = await buildMedicineBillLineItems(db, data.items, {
       skipStockDeduction,
+      originalItems: existing.items,
     }));
   } catch (err) {
     if (err.code === 'NOT_FOUND') {

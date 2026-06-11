@@ -239,7 +239,13 @@ export default function MedicineBilling() {
         return;
       }
 
-      const batch = batches.find((b) => b.currentQty > 0) || batches[0];
+      const usedBatchIds = new Set(
+        formData.items.filter((i) => i.medicineId === medicine._id).map((i) => String(i.batchId)),
+      );
+      const batch =
+        batches.find((b) => b.currentQty > 0 && !usedBatchIds.has(String(b._id))) ||
+        batches.find((b) => b.currentQty > 0) ||
+        batches[0];
       const restored = isEdit ? restoredQtyForBatch(batch._id, originalBillItems) : 0;
       const availableQty = (batch.currentQty || 0) + restored;
 
