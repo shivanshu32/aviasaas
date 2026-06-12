@@ -54,7 +54,55 @@ export async function restoreStockForBillItems(txDb, items, session, now, billCo
 }
 
 /**
+ * Auto-allocate requested quantity across available batches (FEFO).
+ * @returns {Promise<Array<{batch: object, qty: number}>>}
+ */
+async function allocateAcrossBatches(db, medicine, totalQty, deductedMap, restoredMap) {
+  const batches = await db.collection(COLLECTIONS.MEDICINE_STOCK_BATCHES)
+    .find({
+      medicineId: medicine._id,
+      status: { $ne: STOCK_STATUS.EXHAUSTED },
+    })
+    .sort({ expiryDate: 1 })
+    .toArray();
+
+  const allocations = [];
+  let remaining = totalQty;
+  let totalAvailable = 0;
+
+  for (const batch of batches) {
+    if (remaining <= 0) break;
+
+    const batchKey = String(batch._id);
+    const alreadyDeducted = deductedMap.get(batchKey) || 0;
+    const restoredQty = restoredMap.get(batchKey) || 0;
+    const effectiveQty = batch.currentQty + restoredQty - alreadyDeducted;
+
+    if (effectiveQty <= 0) continue;
+
+    totalAvailable += effectiveQty;
+    const take = Math.min(effectiveQty, remaining);
+    allocations.push({ batch, qty: take });
+    remaining -= take;
+  }
+
+  if (remaining > 0) {
+    const err = new Error(`Insufficient stock for ${medicine.name}`);
+    err.code = 'INSUFFICIENT_STOCK';
+    err.details = {
+      medicine: medicine.name,
+      available: totalAvailable,
+      requested: totalQty,
+    };
+    throw err;
+  }
+
+  return allocations;
+}
+
+/**
  * Build bill line items and stock deductions from request payload lines.
+ * Supports automatic multi-batch allocation (FEFO) when a single batch is insufficient.
  * @returns {{ billItems: object[], stockUpdates: object[] }}
  */
 export async function buildMedicineBillLineItems(db, dataItems, { skipStockDeduction, originalItems }) {
@@ -100,56 +148,60 @@ export async function buildMedicineBillLineItems(db, dataItems, { skipStockDeduc
     const restoredQty = restoredMap.get(batchKey) || 0;
     const effectiveQty = batch.currentQty + restoredQty - alreadyDeducted;
 
+    let allocations;
     if (!skipStockDeduction && effectiveQty < item.quantity) {
-      const err = new Error(`Insufficient stock for ${medicine.name}`);
-      err.code = 'INSUFFICIENT_STOCK';
-      err.details = {
-        medicine: medicine.name,
-        batchNo: batch.batchNo,
-        available: effectiveQty,
-        requested: item.quantity,
-      };
-      throw err;
+      // Auto-allocate across multiple batches (FEFO)
+      allocations = await allocateAcrossBatches(db, medicine, item.quantity, deductedMap, restoredMap);
+    } else {
+      allocations = [{ batch, qty: item.quantity }];
     }
 
-    const sellingPrice =
-      item.sellingPrice != null && item.sellingPrice !== ''
-        ? Number(item.sellingPrice)
-        : batch.sellingPrice || batch.mrp;
-    const discountPercent = Math.min(100, Math.max(0, Number(item.discountPercent) || 0));
-    const lineGross = item.quantity * sellingPrice;
-    const lineDiscount = Math.round(lineGross * (discountPercent / 100) * 100) / 100;
-    const amount = Math.round((lineGross - lineDiscount) * 100) / 100;
+    for (const alloc of allocations) {
+      const allocBatch = alloc.batch;
+      const allocQty = alloc.qty;
+      const allocBatchKey = String(allocBatch._id);
+      const allocAlreadyDeducted = deductedMap.get(allocBatchKey) || 0;
+      const allocRestoredQty = restoredMap.get(allocBatchKey) || 0;
 
-    billItems.push({
-      medicineId: medicine._id,
-      batchId: batch._id,
-      medicineName: medicine.name,
-      batchNo: batch.batchNo,
-      expiryDate: batch.expiryDate,
-      quantity: item.quantity,
-      mrp: batch.mrp,
-      sellingPrice,
-      discountPercent,
-      discount: lineDiscount,
-      gstRate: batch.gstRate || 0,
-      amount,
-    });
+      const sellingPrice =
+        item.sellingPrice != null && item.sellingPrice !== ''
+          ? Number(item.sellingPrice)
+          : allocBatch.sellingPrice || allocBatch.mrp;
+      const discountPercent = Math.min(100, Math.max(0, Number(item.discountPercent) || 0));
+      const lineGross = allocQty * sellingPrice;
+      const lineDiscount = Math.round(lineGross * (discountPercent / 100) * 100) / 100;
+      const amount = Math.round((lineGross - lineDiscount) * 100) / 100;
 
-    if (!skipStockDeduction) {
-      const newTotalDeducted = alreadyDeducted + item.quantity;
-      deductedMap.set(batchKey, newTotalDeducted);
-      const newQty = batch.currentQty + restoredQty - newTotalDeducted;
-      const updatePayload = {
-        batchId: batch._id,
-        newQty,
-        newStatus: stockStatusForQty(newQty, Number(medicine.reorderLevel) || 0),
-      };
-      const existingIndex = stockUpdates.findIndex((u) => String(u.batchId) === batchKey);
-      if (existingIndex >= 0) {
-        stockUpdates[existingIndex] = updatePayload;
-      } else {
-        stockUpdates.push(updatePayload);
+      billItems.push({
+        medicineId: medicine._id,
+        batchId: allocBatch._id,
+        medicineName: medicine.name,
+        batchNo: allocBatch.batchNo,
+        expiryDate: allocBatch.expiryDate,
+        quantity: allocQty,
+        mrp: allocBatch.mrp,
+        sellingPrice,
+        discountPercent,
+        discount: lineDiscount,
+        gstRate: allocBatch.gstRate || 0,
+        amount,
+      });
+
+      if (!skipStockDeduction) {
+        const newTotalDeducted = allocAlreadyDeducted + allocQty;
+        deductedMap.set(allocBatchKey, newTotalDeducted);
+        const newQty = allocBatch.currentQty + allocRestoredQty - newTotalDeducted;
+        const updatePayload = {
+          batchId: allocBatch._id,
+          newQty,
+          newStatus: stockStatusForQty(newQty, Number(medicine.reorderLevel) || 0),
+        };
+        const existingIndex = stockUpdates.findIndex((u) => String(u.batchId) === allocBatchKey);
+        if (existingIndex >= 0) {
+          stockUpdates[existingIndex] = updatePayload;
+        } else {
+          stockUpdates.push(updatePayload);
+        }
       }
     }
   }

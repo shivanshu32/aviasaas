@@ -33,13 +33,17 @@ import { created, badRequest, notFound, unprocessable } from '../../utils/respon
 import { withErrorHandler, InsufficientStockError } from '../../utils/errorHandler.js';
 import { generateUniqueId } from '../../../../shared/utils/idGenerator.js';
 import { BILL_PREFIXES } from '../../../../shared/constants/billPrefixes.js';
-import { PAYMENT_STATUS, STOCK_STATUS } from '../../../../shared/constants/enums.js';
+import { PAYMENT_STATUS } from '../../../../shared/constants/enums.js';
 import {
   parseBillDateInput,
   isFutureBillDate,
   isBackdatedBill,
 } from '../../../../shared/utils/billDate.js';
 import { computeMedicineBillTotals } from '../../../../shared/utils/medicineBillTotals.js';
+import {
+  buildMedicineBillLineItems,
+  applyStockUpdates,
+} from '../../utils/medicineBillStock.js';
 
 async function generateMedicineBill(event) {
   if (event.httpMethod !== 'POST') {
@@ -114,95 +118,21 @@ async function generateMedicineBill(event) {
     prescription = await db.collection(COLLECTIONS.OPD_PRESCRIPTIONS).findOne(prescriptionQuery);
   }
 
-  // Fetch all medicines and batches, validate stock
-  const billItems = [];
-  const stockUpdates = [];
-  const deductedMap = new Map(); // track running deductions per batch in this bill
-
-  for (const item of data.items) {
-    // Get medicine
-    const medicineQuery = ObjectId.isValid(item.medicineId)
-      ? { _id: new ObjectId(item.medicineId) }
-      : { medicineId: item.medicineId };
-
-    const medicine = await db.collection(COLLECTIONS.MEDICINES).findOne(medicineQuery);
-    if (!medicine) {
-      return notFound(`Medicine (${item.medicineId})`);
+  // Build bill items with multi-batch auto-allocation support
+  let billItems;
+  let stockUpdates;
+  try {
+    ({ billItems, stockUpdates } = await buildMedicineBillLineItems(db, data.items, {
+      skipStockDeduction,
+    }));
+  } catch (err) {
+    if (err.code === 'NOT_FOUND') {
+      return notFound(err.message);
     }
-
-    // Get batch
-    const batchQuery = ObjectId.isValid(item.batchId)
-      ? { _id: new ObjectId(item.batchId) }
-      : { batchNo: item.batchId, medicineId: medicine._id };
-
-    const batch = await db.collection(COLLECTIONS.MEDICINE_STOCK_BATCHES).findOne(batchQuery);
-    if (!batch) {
-      return notFound(`Stock batch (${item.batchId})`);
+    if (err.code === 'INSUFFICIENT_STOCK') {
+      return unprocessable(err.message, err.details);
     }
-
-    const batchKey = String(batch._id);
-    const alreadyDeducted = deductedMap.get(batchKey) || 0;
-    const effectiveQty = batch.currentQty - alreadyDeducted;
-
-    if (!skipStockDeduction && effectiveQty < item.quantity) {
-      return unprocessable(`Insufficient stock for ${medicine.name}`, {
-        medicine: medicine.name,
-        batchNo: batch.batchNo,
-        available: effectiveQty,
-        requested: item.quantity,
-      });
-    }
-
-    const sellingPrice =
-      item.sellingPrice != null && item.sellingPrice !== ''
-        ? Number(item.sellingPrice)
-        : batch.sellingPrice || batch.mrp;
-    const discountPercent = Math.min(
-      100,
-      Math.max(0, Number(item.discountPercent) || 0),
-    );
-    const lineGross = item.quantity * sellingPrice;
-    const lineDiscount = Math.round(lineGross * (discountPercent / 100) * 100) / 100;
-    const amount = Math.round((lineGross - lineDiscount) * 100) / 100;
-
-    billItems.push({
-      medicineId: medicine._id,
-      batchId: batch._id,
-      medicineName: medicine.name,
-      batchNo: batch.batchNo,
-      expiryDate: batch.expiryDate,
-      quantity: item.quantity,
-      mrp: batch.mrp,
-      sellingPrice,
-      discountPercent,
-      discount: lineDiscount,
-      gstRate: batch.gstRate || 0,
-      amount,
-    });
-
-    if (!skipStockDeduction) {
-      const newTotalDeducted = alreadyDeducted + item.quantity;
-      deductedMap.set(batchKey, newTotalDeducted);
-      const newQty = batch.currentQty - newTotalDeducted;
-      let newStatus = batch.status;
-      if (newQty === 0) {
-        newStatus = STOCK_STATUS.EXHAUSTED;
-      } else if (newQty <= medicine.reorderLevel) {
-        newStatus = STOCK_STATUS.LOW;
-      }
-
-      const updatePayload = {
-        batchId: batch._id,
-        newQty,
-        newStatus,
-      };
-      const existingIndex = stockUpdates.findIndex((u) => String(u.batchId) === batchKey);
-      if (existingIndex >= 0) {
-        stockUpdates[existingIndex] = updatePayload;
-      } else {
-        stockUpdates.push(updatePayload);
-      }
-    }
+    throw err;
   }
 
   const {
@@ -283,19 +213,13 @@ async function generateMedicineBill(event) {
       await txDb.collection(COLLECTIONS.MEDICINE_BILLS).insertOne(bill, { session });
 
       if (stockUpdates.length > 0) {
-        for (const update of stockUpdates) {
-          await txDb.collection(COLLECTIONS.MEDICINE_STOCK_BATCHES).updateOne(
-            { _id: update.batchId },
-            {
-              $set: {
-                currentQty: update.newQty,
-                status: update.newStatus,
-                updatedAt: now,
-              },
-            },
-            { session },
-          );
-        }
+        const billContext = {
+          billId: bill._id,
+          billNo: bill.billNo,
+          patientName: data.patientName,
+          performedBy: data.createdBy || 'Pharmacy',
+        };
+        await applyStockUpdates(txDb, stockUpdates, session, now, billContext, billItems);
       }
     });
   } catch (error) {

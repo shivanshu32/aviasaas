@@ -325,8 +325,8 @@ export default function MedicineBilling() {
     }
 
     for (const item of formData.items) {
-      if (!formData.skipStockDeduction && item.quantity > item.availableQty) {
-        toast.error(`Insufficient stock for ${item.medicineName}. Available: ${item.availableQty}`);
+      if (!item.quantity || item.quantity <= 0) {
+        toast.error(`Invalid quantity for ${item.medicineName}`);
         return;
       }
     }
@@ -585,7 +585,6 @@ export default function MedicineBilling() {
                         value={item.quantity}
                         onChange={(e) => handleItemChange(index, 'quantity', e.target.value)}
                         min="1"
-                        max={formData.skipStockDeduction ? undefined : item.availableQty}
                         className="w-full px-2 py-1 text-sm border border-gray-200 rounded"
                       />
                     </div>

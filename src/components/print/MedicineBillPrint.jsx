@@ -4,7 +4,49 @@ import { formatMonthYear } from '../../utils/monthYearDate';
 import { getMedicineBillDisplayTotals } from '../../utils/medicineBillTotals';
 import './PrintStyles.css';
 
-const MedicineBillPrint = forwardRef(({ bill }, ref) => {
+function getConsolidatedItems(items) {
+  const map = new Map();
+  for (const item of items || []) {
+    const key = item.medicineName || item.description || 'Unknown';
+    const existing = map.get(key);
+    if (existing) {
+      existing.quantity += Number(item.quantity || 0);
+      existing.amount += Number(item.amount || 0);
+      if (item.batchNo && !existing.batchNos.includes(item.batchNo)) {
+        existing.batchNos.push(item.batchNo);
+      }
+      if (item.expiryDate && !existing.expiryDates.includes(item.expiryDate)) {
+        existing.expiryDates.push(item.expiryDate);
+      }
+      if (item.mrp != null && !existing.mrps.includes(item.mrp)) {
+        existing.mrps.push(item.mrp);
+      }
+      if (item.discountPercent != null && !existing.discountPercents.includes(item.discountPercent)) {
+        existing.discountPercents.push(item.discountPercent);
+      }
+    } else {
+      map.set(key, {
+        medicineName: key,
+        manufacturer: item.manufacturer || null,
+        quantity: Number(item.quantity || 0),
+        amount: Number(item.amount || 0),
+        batchNos: item.batchNo ? [item.batchNo] : [],
+        expiryDates: item.expiryDate ? [item.expiryDate] : [],
+        mrps: item.mrp != null ? [item.mrp] : [],
+        discountPercents: item.discountPercent != null ? [item.discountPercent] : [],
+      });
+    }
+  }
+  return Array.from(map.values()).map((g) => ({
+    ...g,
+    batchNo: g.batchNos.length === 1 ? g.batchNos[0] : g.batchNos.length > 1 ? 'Multiple' : '-',
+    expiryDate: g.expiryDates.length === 1 ? g.expiryDates[0] : g.expiryDates.length > 1 ? 'Multiple' : '-',
+    mrp: g.mrps.length === 1 ? g.mrps[0] : null,
+    discountPercent: g.discountPercents.length === 1 ? g.discountPercents[0] : null,
+  }));
+}
+
+const MedicineBillPrint = forwardRef(({ bill, consolidated = false }, ref) => {
   const formatDate = (date) => {
     return new Date(date).toLocaleDateString('en-IN', {
       day: '2-digit',
@@ -41,6 +83,7 @@ const MedicineBillPrint = forwardRef(({ bill }, ref) => {
   const patient = bill.patient || {};
   const doctor = bill.doctor || {};
   const { subtotal, discountAmount, grandTotal, roundOff } = getMedicineBillDisplayTotals(bill);
+  const displayItems = consolidated ? getConsolidatedItems(bill.items) : (bill.items || []);
 
   return (
     <div ref={ref} className="print-document">
@@ -110,7 +153,7 @@ const MedicineBillPrint = forwardRef(({ bill }, ref) => {
           </tr>
         </thead>
         <tbody>
-          {bill.items?.map((item, index) => (
+          {displayItems.map((item, index) => (
             <tr key={index}>
               <td className="text-center">{index + 1}</td>
               <td>
