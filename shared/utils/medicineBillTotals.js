@@ -20,7 +20,7 @@ export function computeMedicineBillTotals(items) {
     (sum, item) => sum + Number(item.amount || 0),
     0,
   );
-  const grandTotal = Math.round(taxableAmount);
+  const grandTotal = Math.floor(taxableAmount);
   const roundOff = grandTotal - taxableAmount;
 
   return {

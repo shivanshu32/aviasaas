@@ -170,7 +170,7 @@ export async function buildMedicineBillLineItems(db, dataItems, { skipStockDeduc
       const discountPercent = Math.min(100, Math.max(0, Number(item.discountPercent) || 0));
       const lineGross = allocQty * sellingPrice;
       const lineDiscount = Math.round(lineGross * (discountPercent / 100) * 100) / 100;
-      const amount = Math.round((lineGross - lineDiscount) * 100) / 100;
+      const amount = Math.floor((lineGross - lineDiscount) * 100) / 100;
 
       billItems.push({
         medicineId: medicine._id,
