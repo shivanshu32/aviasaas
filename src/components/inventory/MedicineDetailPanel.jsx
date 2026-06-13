@@ -204,12 +204,22 @@ export default function MedicineDetailPanel({
               }
             />
             <DetailField
-              label="Catalog purchase"
-              value={formatMedicinePrice(medicine.purchasePrice)}
+              label="Purchase range"
+              value={
+                medicine.batchMinPurchasePrice != null && medicine.batchPurchasePrice != null && medicine.batchMinPurchasePrice !== medicine.batchPurchasePrice
+                  ? `${formatMedicinePrice(medicine.batchMinPurchasePrice)} – ${formatMedicinePrice(medicine.batchPurchasePrice)}`
+                  : formatMedicinePrice(medicine.weightedAvgPurchasePrice ?? medicine.displayPurchasePrice)
+              }
             />
             <DetailField
-              label="Catalog sale / MRP"
-              value={formatMedicinePrice(medicine.sellingPrice)}
+              label="Sale / MRP range"
+              value={
+                (medicine.batchMinSellingPrice ?? medicine.batchMinMrp) != null &&
+                (medicine.batchSellingPrice ?? medicine.batchMrp) != null &&
+                (medicine.batchMinSellingPrice ?? medicine.batchMinMrp) !== (medicine.batchSellingPrice ?? medicine.batchMrp)
+                  ? `${formatMedicinePrice(medicine.batchMinSellingPrice ?? medicine.batchMinMrp)} – ${formatMedicinePrice(medicine.batchSellingPrice ?? medicine.batchMrp)}`
+                  : formatMedicinePrice(medicine.weightedAvgSellingPrice ?? medicine.weightedAvgMrp ?? medicine.displaySellingPrice)
+              }
             />
             <DetailField
               label="Total stock"

@@ -30,8 +30,6 @@ async function updateMedicine(event) {
     return notFound('Medicine');
   }
 
-  const syncBatchPrices = Boolean(data.syncBatchPrices);
-
   const updateFields = {
     updatedAt: new Date(),
   };
@@ -41,7 +39,6 @@ async function updateMedicine(event) {
     'composition', 'strength', 'rackLocation',
     'packSize', 'packUnit', 'reorderLevel', 'gstRate',
     'hsnCode', 'isScheduled', 'scheduleType',
-    'purchasePrice', 'sellingPrice',
     'isActive',
   ];
 
@@ -54,19 +51,6 @@ async function updateMedicine(event) {
 
     if (field === 'isActive' || field === 'isScheduled') {
       updateFields[field] = Boolean(data[field]);
-      continue;
-    }
-
-    if (field === 'purchasePrice' || field === 'sellingPrice') {
-      if (data[field] === null || data[field] === '') {
-        updateFields[field] = null;
-      } else {
-        const n = Number(data[field]);
-        if (Number.isNaN(n) || n < 0) {
-          return badRequest(`Invalid ${field}`);
-        }
-        updateFields[field] = n;
-      }
       continue;
     }
 
@@ -92,23 +76,6 @@ async function updateMedicine(event) {
     { $set: updateFields },
     { returnDocument: 'after' },
   );
-
-  if (syncBatchPrices) {
-    const batchSet = { updatedAt: new Date() };
-    if (updateFields.purchasePrice !== undefined) {
-      batchSet.purchasePrice = updateFields.purchasePrice;
-    }
-    if (updateFields.sellingPrice !== undefined) {
-      batchSet.sellingPrice = updateFields.sellingPrice;
-      batchSet.mrp = updateFields.sellingPrice;
-    }
-    if (Object.keys(batchSet).length > 1) {
-      await db.collection(COLLECTIONS.MEDICINE_STOCK_BATCHES).updateMany(
-        { medicineId: medicine._id },
-        { $set: batchSet },
-      );
-    }
-  }
 
   const updatedMedicine = result?.value ?? result;
 

@@ -133,24 +133,6 @@ export default function MedicineCatalogModal({ isOpen, onClose, medicine, onSave
             min="0"
             max="28"
           />
-          <Input
-            label="Default purchase price (₹)"
-            type="number"
-            value={form.purchasePrice}
-            onChange={(e) => setForm((p) => ({ ...p, purchasePrice: e.target.value }))}
-            min="0"
-            step="0.01"
-            placeholder="Catalog default"
-          />
-          <Input
-            label="Default selling price (₹)"
-            type="number"
-            value={form.sellingPrice}
-            onChange={(e) => setForm((p) => ({ ...p, sellingPrice: e.target.value }))}
-            min="0"
-            step="0.01"
-            placeholder="Sale / MRP default"
-          />
           <Select
             label="Drug schedule"
             value={form.scheduleType}
@@ -168,19 +150,9 @@ export default function MedicineCatalogModal({ isOpen, onClose, medicine, onSave
               />
               <span className="text-sm text-gray-700">Mark as scheduled drug</span>
             </label>
-            {isEdit && (
-              <label className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-                  checked={form.syncBatchPrices}
-                  onChange={(e) => setForm((p) => ({ ...p, syncBatchPrices: e.target.checked }))}
-                />
-                <span className="text-sm text-gray-700">
-                  Also update prices on all existing stock batches (used in billing)
-                </span>
-              </label>
-            )}
+            <div className="text-xs text-gray-500 bg-gray-50 p-2 rounded border border-gray-200">
+              Prices are set per batch when adding stock. To change prices, update the stock batch on the Stock page.
+            </div>
           </div>
         </div>
         <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">

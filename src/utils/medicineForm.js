@@ -1,5 +1,4 @@
 import { SCHEDULE_TYPE } from '@shared/constants/enums.js';
-import { getMedicineRowPrices } from './medicinePrice';
 
 export const MEDICINE_CATEGORIES = [
   { value: 'tablet', label: 'Tablet' },
@@ -35,14 +34,10 @@ export function getInitialMedicineForm() {
     rackLocation: '',
     isScheduled: false,
     scheduleType: SCHEDULE_TYPE.NONE,
-    purchasePrice: '',
-    sellingPrice: '',
-    syncBatchPrices: true,
   };
 }
 
 export function medicineRowToForm(row) {
-  const { purchase, selling } = getMedicineRowPrices(row);
   return {
     name: row.name || '',
     genericName: row.genericName || '',
@@ -58,33 +53,16 @@ export function medicineRowToForm(row) {
     rackLocation: row.rackLocation || '',
     isScheduled: Boolean(row.isScheduled),
     scheduleType: row.scheduleType || SCHEDULE_TYPE.NONE,
-    purchasePrice: purchase != null && purchase !== '' ? String(purchase) : '',
-    sellingPrice: selling != null && selling !== '' ? String(selling) : '',
-    syncBatchPrices: true,
   };
 }
 
 export function validateMedicineForm(form) {
-  const purchaseRaw = form.purchasePrice;
-  const sellingRaw = form.sellingPrice;
-
-  if (purchaseRaw !== '') {
-    const n = Number(purchaseRaw);
-    if (Number.isNaN(n) || n < 0) return 'Invalid purchase price';
-  }
-  if (sellingRaw !== '') {
-    const n = Number(sellingRaw);
-    if (Number.isNaN(n) || n < 0) return 'Invalid selling price';
-  }
   if (!form.name?.trim()) return 'Medicine name is required';
   return null;
 }
 
 export function buildMedicinePayload(form, { isEdit }) {
-  const purchaseRaw = form.purchasePrice;
-  const sellingRaw = form.sellingPrice;
-
-  const payload = {
+  return {
     name: form.name.trim(),
     genericName: form.genericName.trim() || null,
     manufacturer: form.manufacturer.trim() || null,
@@ -100,22 +78,4 @@ export function buildMedicinePayload(form, { isEdit }) {
     isScheduled: Boolean(form.isScheduled),
     scheduleType: form.scheduleType || SCHEDULE_TYPE.NONE,
   };
-
-  if (purchaseRaw === '') {
-    if (isEdit) payload.purchasePrice = null;
-  } else {
-    payload.purchasePrice = Number(purchaseRaw);
-  }
-
-  if (sellingRaw === '') {
-    if (isEdit) payload.sellingPrice = null;
-  } else {
-    payload.sellingPrice = Number(sellingRaw);
-  }
-
-  if (isEdit && form.syncBatchPrices) {
-    payload.syncBatchPrices = true;
-  }
-
-  return payload;
 }

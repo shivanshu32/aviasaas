@@ -6,19 +6,19 @@ export function formatMedicinePrice(value) {
   return `₹${n.toFixed(2)}`;
 }
 
-/** Resolve purchase / sale from API-enriched medicine row. */
+/** Resolve purchase / sale from API-enriched medicine row. Batch prices are authoritative. */
 export function getMedicineRowPrices(row) {
   const purchase =
+    row?.batchPurchasePrice ??
     row?.displayPurchasePrice ??
     row?.purchasePrice ??
-    row?.batchPurchasePrice ??
     null;
   const selling =
-    row?.displaySellingPrice ??
-    row?.sellingPrice ??
-    row?.mrp ??
     row?.batchSellingPrice ??
     row?.batchMrp ??
+    row?.displaySellingPrice ??
+    row?.mrp ??
+    row?.sellingPrice ??
     null;
   return { purchase, selling };
 }

@@ -19,9 +19,9 @@ export function enrichMedicineWithPrices(doc) {
       : null;
   const batchMrp = doc.batchMrp != null && doc.batchMrp > 0 ? doc.batchMrp : null;
 
-  const displayPurchasePrice = catalogPurchase ?? batchPurchase ?? null;
-  const displaySellingPrice = catalogSelling ?? batchSelling ?? batchMrp ?? null;
-  const mrp = batchMrp ?? catalogSelling ?? batchSelling ?? null;
+  const displayPurchasePrice = batchPurchase ?? catalogPurchase ?? null;
+  const displaySellingPrice = batchSelling ?? batchMrp ?? catalogSelling ?? null;
+  const mrp = batchMrp ?? batchSelling ?? catalogSelling ?? null;
 
   return {
     ...doc,
@@ -49,7 +49,32 @@ export const STOCK_PRICE_GROUP_FIELDS = {
     },
   },
   batchMrp: { $max: '$mrp' },
+  batchMinMrp: { $min: '$mrp' },
   batchSellingPrice: { $max: '$sellingPrice' },
+  batchMinSellingPrice: { $min: '$sellingPrice' },
   batchPurchasePrice: { $max: '$purchasePrice' },
+  batchMinPurchasePrice: { $min: '$purchasePrice' },
   nearestExpiry: { $min: '$expiryDate' },
+  // weighted averages across batches by currentQty (null if no stock)
+  weightedAvgMrp: {
+    $cond: [
+      { $eq: [{ $sum: '$currentQty' }, 0] },
+      null,
+      { $divide: [{ $sum: { $multiply: ['$mrp', '$currentQty'] } }, { $sum: '$currentQty' }] },
+    ],
+  },
+  weightedAvgSellingPrice: {
+    $cond: [
+      { $eq: [{ $sum: '$currentQty' }, 0] },
+      null,
+      { $divide: [{ $sum: { $multiply: ['$sellingPrice', '$currentQty'] } }, { $sum: '$currentQty' }] },
+    ],
+  },
+  weightedAvgPurchasePrice: {
+    $cond: [
+      { $eq: [{ $sum: '$currentQty' }, 0] },
+      null,
+      { $divide: [{ $sum: { $multiply: ['$purchasePrice', '$currentQty'] } }, { $sum: '$currentQty' }] },
+    ],
+  },
 };

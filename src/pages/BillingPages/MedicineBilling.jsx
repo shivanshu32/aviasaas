@@ -59,6 +59,11 @@ export default function MedicineBilling() {
     skipStockDeduction: false,
   });
 
+  // Batch chooser state
+  const [batchChooserMedicine, setBatchChooserMedicine] = useState(null);
+  const [batchChooserBatches, setBatchChooserBatches] = useState([]);
+  const [showBatchChooser, setShowBatchChooser] = useState(false);
+
   const billDateParsed = parseBillDateInput(formData.billDate);
   const isBackdated = billDateParsed ? isBackdatedBill(billDateParsed) : false;
 
@@ -229,7 +234,6 @@ export default function MedicineBilling() {
     setMedicineSearch('');
     setShowMedicineDropdown(false);
 
-    // Fetch stock batches for this medicine
     try {
       const response = await medicineService.stock.getBatches(medicine._id);
       const batches = response.batches || [];
@@ -242,43 +246,63 @@ export default function MedicineBilling() {
       const usedBatchIds = new Set(
         formData.items.filter((i) => i.medicineId === medicine._id).map((i) => String(i.batchId)),
       );
-      const batch =
-        batches.find((b) => b.currentQty > 0 && !usedBatchIds.has(String(b._id))) ||
-        batches.find((b) => b.currentQty > 0) ||
-        batches[0];
-      const restored = isEdit ? restoredQtyForBatch(batch._id, originalBillItems) : 0;
-      const availableQty = (batch.currentQty || 0) + restored;
+      const availableBatches = batches.filter((b) => b.currentQty > 0);
 
-      const existingIndex = formData.items.findIndex(
-        (item) => item.medicineId === medicine._id && item.batchId === batch._id,
-      );
-
-      if (existingIndex >= 0) {
-        handleItemChange(existingIndex, 'quantity', Number(formData.items[existingIndex].quantity) + 1);
-      } else {
-        setFormData((prev) => ({
-          ...prev,
-          items: [
-            ...prev.items,
-            {
-              medicineId: medicine._id,
-              medicineName: medicine.name,
-              batchId: batch._id,
-              batchNo: batch.batchNo,
-              expiryDate: batch.expiryDate,
-              availableQty,
-              quantity: 1,
-              mrp: batch.mrp,
-              sellingPrice: batch.sellingPrice || batch.mrp,
-              discountPercent: 0,
-              gstRate: batch.gstRate || 0,
-            },
-          ],
-        }));
+      if (availableBatches.length === 0) {
+        toast.error('No stock available for this medicine');
+        return;
       }
+
+      // If only one batch available, auto-select it
+      if (availableBatches.length === 1 && !usedBatchIds.has(String(availableBatches[0]._id))) {
+        const batch = availableBatches[0];
+        addBatchToBill(medicine, batch);
+        return;
+      }
+
+      // Show batch chooser
+      setBatchChooserMedicine(medicine);
+      setBatchChooserBatches(availableBatches);
+      setShowBatchChooser(true);
     } catch (error) {
       toast.error('Failed to fetch stock');
     }
+  };
+
+  const addBatchToBill = (medicine, batch) => {
+    const restored = isEdit ? restoredQtyForBatch(batch._id, originalBillItems) : 0;
+    const availableQty = (batch.currentQty || 0) + restored;
+
+    const existingIndex = formData.items.findIndex(
+      (item) => item.medicineId === medicine._id && item.batchId === batch._id,
+    );
+
+    if (existingIndex >= 0) {
+      handleItemChange(existingIndex, 'quantity', Number(formData.items[existingIndex].quantity) + 1);
+    } else {
+      setFormData((prev) => ({
+        ...prev,
+        items: [
+          ...prev.items,
+          {
+            medicineId: medicine._id,
+            medicineName: medicine.name,
+            batchId: batch._id,
+            batchNo: batch.batchNo,
+            expiryDate: batch.expiryDate,
+            availableQty,
+            quantity: 1,
+            mrp: batch.mrp,
+            sellingPrice: batch.sellingPrice || batch.mrp,
+            discountPercent: 0,
+            gstRate: batch.gstRate || 0,
+          },
+        ],
+      }));
+    }
+    setShowBatchChooser(false);
+    setBatchChooserMedicine(null);
+    setBatchChooserBatches([]);
   };
 
   const handleChange = (e) => {
@@ -556,6 +580,58 @@ export default function MedicineBilling() {
                     </div>
                   </button>
                 ))}
+              </div>
+            )}
+
+            {/* Batch Chooser */}
+            {showBatchChooser && batchChooserMedicine && (
+              <div className="mt-2 border rounded-lg bg-white shadow-sm overflow-hidden">
+                <div className="px-3 py-2 bg-gray-50 border-b flex items-center justify-between">
+                  <span className="text-sm font-medium text-gray-700">
+                    Select batch for <span className="text-gray-900">{batchChooserMedicine.name}</span>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => { setShowBatchChooser(false); setBatchChooserMedicine(null); setBatchChooserBatches([]); }}
+                    className="text-xs text-gray-500 hover:text-gray-700"
+                  >
+                    Cancel
+                  </button>
+                </div>
+                <div className="max-h-40 overflow-y-auto">
+                  {batchChooserBatches.map((batch) => {
+                    const isUsed = formData.items.some(
+                      (i) => String(i.batchId) === String(batch._id)
+                    );
+                    return (
+                      <button
+                        key={batch._id}
+                        type="button"
+                        disabled={isUsed}
+                        onClick={() => addBatchToBill(batchChooserMedicine, batch)}
+                        className="w-full px-3 py-2 text-left text-sm border-b last:border-b-0 hover:bg-green-50 disabled:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="font-medium">{batch.batchNo}</span>
+                          <span className="text-xs text-gray-500">
+                            Qty: {batch.currentQty}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between mt-0.5">
+                          <span className="text-xs text-gray-500">
+                            Exp: {batch.expiryDate ? new Date(batch.expiryDate).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' }) : '-'}
+                          </span>
+                          <span className="text-xs text-green-700 font-medium">
+                            {batch.sellingPrice ? `₹${Number(batch.sellingPrice).toFixed(2)}` : `MRP ₹${Number(batch.mrp).toFixed(2)}`}
+                          </span>
+                        </div>
+                        {isUsed && (
+                          <span className="text-xs text-orange-600">Already used in this bill</span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             )}
           </div>

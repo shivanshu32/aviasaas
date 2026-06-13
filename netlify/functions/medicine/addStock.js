@@ -122,6 +122,11 @@ async function addStock(event) {
           initialQty: newInitialQty,
           status: newStatus,
           updatedAt: now,
+          // Update prices to reflect the new restock price
+          purchasePrice,
+          mrp,
+          sellingPrice,
+          gstRate: Number(data.gstRate) || medicine.gstRate || 0,
         },
       },
       { returnDocument: 'after' },

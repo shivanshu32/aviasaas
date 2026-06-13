@@ -42,24 +42,42 @@ async function getMedicineById(event) {
       .toArray();
 
     const totalStock = stockBatches.reduce((sum, batch) => sum + batch.currentQty, 0);
-    const batchMrp = stockBatches.reduce((max, b) => Math.max(max, Number(b.mrp) || 0), 0);
-    const batchSelling = stockBatches.reduce(
-      (max, b) => Math.max(max, Number(b.sellingPrice) || 0),
-      0,
-    );
-    const batchPurchase = stockBatches.reduce(
-      (max, b) => Math.max(max, Number(b.purchasePrice) || 0),
-      0,
-    );
+
+    const mrps = stockBatches.map((b) => Number(b.mrp) || 0).filter((v) => v > 0);
+    const sellingPrices = stockBatches.map((b) => Number(b.sellingPrice) || 0).filter((v) => v > 0);
+    const purchasePrices = stockBatches.map((b) => Number(b.purchasePrice) || 0).filter((v) => v > 0);
+
+    const batchMrp = mrps.length > 0 ? Math.max(...mrps) : null;
+    const batchMinMrp = mrps.length > 0 ? Math.min(...mrps) : null;
+    const batchSellingPrice = sellingPrices.length > 0 ? Math.max(...sellingPrices) : null;
+    const batchMinSellingPrice = sellingPrices.length > 0 ? Math.min(...sellingPrices) : null;
+    const batchPurchasePrice = purchasePrices.length > 0 ? Math.max(...purchasePrices) : null;
+    const batchMinPurchasePrice = purchasePrices.length > 0 ? Math.min(...purchasePrices) : null;
+
+    const weightedAvgMrp = totalStock > 0
+      ? stockBatches.reduce((sum, b) => sum + (Number(b.mrp) || 0) * b.currentQty, 0) / totalStock
+      : null;
+    const weightedAvgSellingPrice = totalStock > 0
+      ? stockBatches.reduce((sum, b) => sum + (Number(b.sellingPrice) || 0) * b.currentQty, 0) / totalStock
+      : null;
+    const weightedAvgPurchasePrice = totalStock > 0
+      ? stockBatches.reduce((sum, b) => sum + (Number(b.purchasePrice) || 0) * b.currentQty, 0) / totalStock
+      : null;
 
     response = enrichMedicineWithPrices({
       ...medicine,
       stockBatches,
       totalStock,
       isLowStock: totalStock <= medicine.reorderLevel,
-      batchMrp: batchMrp || null,
-      batchSellingPrice: batchSelling || null,
-      batchPurchasePrice: batchPurchase || null,
+      batchMrp,
+      batchMinMrp,
+      batchSellingPrice,
+      batchMinSellingPrice,
+      batchPurchasePrice,
+      batchMinPurchasePrice,
+      weightedAvgMrp,
+      weightedAvgSellingPrice,
+      weightedAvgPurchasePrice,
     });
   } else {
     response = enrichMedicineWithPrices(medicine);

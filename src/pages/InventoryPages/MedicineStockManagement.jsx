@@ -369,14 +369,21 @@ export default function MedicineStockManagement() {
   };
 
   const medicineDefaultsFromRow = (medicine) => {
-    const { purchase, selling } = getMedicineRowPrices(medicine);
-    const sellingStr = selling != null && selling !== '' ? String(selling) : '';
-    const purchaseStr = purchase != null && purchase !== '' ? String(purchase) : '';
+    // Use the most recent batch's prices (batches are sorted by expiryDate ascending = FEFO)
+    const batches = medicine.stockBatches || [];
+    const latestBatch = [...batches].sort(
+      (a, b) => new Date(b.expiry || 0) - new Date(a.expiry || 0)
+    )[0];
+
+    const purchaseStr = latestBatch?.purchasePrice != null ? String(latestBatch.purchasePrice) : '';
+    const mrpStr = latestBatch?.mrp != null ? String(latestBatch.mrp) : '';
+    const sellingStr = latestBatch?.sellingPrice != null ? String(latestBatch.sellingPrice) : mrpStr;
+
     return {
       medicineId: medicine._id,
       purchasePrice: purchaseStr,
       sellingPrice: sellingStr,
-      mrp: sellingStr,
+      mrp: mrpStr,
     };
   };
 
@@ -491,12 +498,26 @@ export default function MedicineStockManagement() {
     {
       key: 'purchasePrice',
       title: 'Purchase',
-      render: (_, row) => formatMedicinePrice(getMedicineRowPrices(row).purchase),
+      render: (_, row) => {
+        const min = row.batchMinPurchasePrice;
+        const max = row.batchPurchasePrice;
+        if (min != null && max != null && min !== max) {
+          return `${formatMedicinePrice(min)} – ${formatMedicinePrice(max)}`;
+        }
+        return formatMedicinePrice(row.weightedAvgPurchasePrice ?? getMedicineRowPrices(row).purchase);
+      },
     },
     {
       key: 'sellingPrice',
       title: 'Sale / MRP',
-      render: (_, row) => formatMedicinePrice(getMedicineRowPrices(row).selling),
+      render: (_, row) => {
+        const min = row.batchMinSellingPrice ?? row.batchMinMrp;
+        const max = row.batchSellingPrice ?? row.batchMrp;
+        if (min != null && max != null && min !== max) {
+          return `${formatMedicinePrice(min)} – ${formatMedicinePrice(max)}`;
+        }
+        return formatMedicinePrice(row.weightedAvgSellingPrice ?? row.weightedAvgMrp ?? getMedicineRowPrices(row).selling);
+      },
     },
     {
       key: 'currentStock',
