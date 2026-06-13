@@ -43,11 +43,23 @@ async function updateStockBatch(event) {
 
   const db = await getDb();
 
-  const batchQuery = ObjectId.isValid(data.batchId)
-    ? { _id: new ObjectId(data.batchId) }
-    : { batchNo: data.batchId };
+  let batch;
+  try {
+    if (ObjectId.isValid(data.batchId)) {
+      batch = await db.collection(COLLECTIONS.MEDICINE_STOCK_BATCHES).findOne({
+        _id: new ObjectId(data.batchId),
+      });
+    }
+    if (!batch) {
+      batch = await db.collection(COLLECTIONS.MEDICINE_STOCK_BATCHES).findOne({
+        batchNo: String(data.batchId),
+      });
+    }
+  } catch (err) {
+    console.error('Batch lookup error:', err);
+    return badRequest('Invalid batch ID');
+  }
 
-  const batch = await db.collection(COLLECTIONS.MEDICINE_STOCK_BATCHES).findOne(batchQuery);
   if (!batch) {
     return notFound('Stock batch');
   }
@@ -69,7 +81,7 @@ async function updateStockBatch(event) {
     updateFields.batchNo = data.batchNo.trim();
   }
 
-  if (data.expiryDate !== undefined) {
+  if (data.expiryDate !== undefined && data.expiryDate !== '') {
     const expiryDate = endOfExpiryMonth(data.expiryDate);
     if (!expiryDate) {
       return badRequest('Invalid expiry month (use YYYY-MM)');
@@ -80,7 +92,7 @@ async function updateStockBatch(event) {
     updateFields.expiryDate = expiryDate;
   }
 
-  if (data.mfgDate !== undefined) {
+  if (data.mfgDate !== undefined && data.mfgDate !== '') {
     const mfgDate = startOfMfgMonth(data.mfgDate);
     if (!mfgDate) {
       return badRequest('Invalid manufacturing month (use YYYY-MM)');
@@ -88,7 +100,7 @@ async function updateStockBatch(event) {
     updateFields.mfgDate = mfgDate;
   }
 
-  if (data.purchasePrice !== undefined) {
+  if (data.purchasePrice !== undefined && data.purchasePrice !== '') {
     const n = Number(data.purchasePrice);
     if (Number.isNaN(n) || n < 0) {
       return badRequest('Invalid purchase price');
@@ -96,7 +108,7 @@ async function updateStockBatch(event) {
     updateFields.purchasePrice = n;
   }
 
-  if (data.mrp !== undefined) {
+  if (data.mrp !== undefined && data.mrp !== '') {
     const n = Number(data.mrp);
     if (Number.isNaN(n) || n < 0) {
       return badRequest('Invalid MRP');
@@ -116,7 +128,7 @@ async function updateStockBatch(event) {
     }
   }
 
-  if (data.gstRate !== undefined) {
+  if (data.gstRate !== undefined && data.gstRate !== '') {
     const n = Number(data.gstRate);
     if (Number.isNaN(n) || n < 0) {
       return badRequest('Invalid GST rate');
@@ -136,13 +148,14 @@ async function updateStockBatch(event) {
     updateFields.remarks = data.remarks.trim() || null;
   }
 
-  const result = await db.collection(COLLECTIONS.MEDICINE_STOCK_BATCHES).findOneAndUpdate(
+  await db.collection(COLLECTIONS.MEDICINE_STOCK_BATCHES).updateOne(
     { _id: batch._id },
     { $set: updateFields },
-    { returnDocument: 'after' },
   );
 
-  const updatedBatch = result?.value ?? result;
+  const updatedBatch = await db.collection(COLLECTIONS.MEDICINE_STOCK_BATCHES).findOne({
+    _id: batch._id,
+  });
 
   return success({ stockBatch: updatedBatch }, 'Stock batch updated successfully');
 }
