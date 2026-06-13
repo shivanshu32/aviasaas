@@ -21,14 +21,14 @@
  */
 
 import { ObjectId } from 'mongodb';
-import { getDb, COLLECTIONS } from '../utils/db.js';
-import { success, badRequest, notFound, conflict } from '../utils/response.js';
-import { withErrorHandler } from '../utils/errorHandler.js';
+import { getDb, COLLECTIONS } from './utils/db.js';
+import { success, badRequest, notFound, conflict } from './utils/response.js';
+import { withErrorHandler } from './utils/errorHandler.js';
 import {
   endOfExpiryMonth,
   startOfMfgMonth,
   isExpiryMonthPast,
-} from '../../../shared/utils/monthYearDate.js';
+} from '../shared/utils/monthYearDate.js';
 
 async function updateStockBatch(event) {
   if (event.httpMethod !== 'PUT') {
