@@ -8,7 +8,9 @@ import {
   Pencil,
   Plus,
   ExternalLink,
+  X,
 } from 'lucide-react';
+import { Input } from '../ui';
 import { medicineService } from '../../services';
 import { formatMedicinePrice } from '../../utils/medicinePrice';
 import { formatMonthYear } from '../../utils/monthYearDate';
@@ -62,6 +64,11 @@ export default function MedicineDetailPanel({
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState(null);
 
+  // Batch edit modal state
+  const [editingBatch, setEditingBatch] = useState(null);
+  const [batchForm, setBatchForm] = useState({});
+  const [savingBatch, setSavingBatch] = useState(false);
+
   const loadData = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -87,6 +94,56 @@ export default function MedicineDetailPanel({
   useEffect(() => {
     loadData();
   }, [loadData, refreshKey]);
+
+  const openBatchEdit = (batch) => {
+    setEditingBatch(batch);
+    setBatchForm({
+      batchNo: batch.batchNo || '',
+      expiryDate: batch.expiryDate ? batch.expiryDate.substring(0, 7) : '',
+      mfgDate: batch.mfgDate ? batch.mfgDate.substring(0, 7) : '',
+      purchasePrice: batch.purchasePrice != null ? String(batch.purchasePrice) : '',
+      mrp: batch.mrp != null ? String(batch.mrp) : '',
+      sellingPrice: batch.sellingPrice != null ? String(batch.sellingPrice) : '',
+      supplier: batch.supplier || '',
+      purchaseInvoiceNo: batch.purchaseInvoiceNo || '',
+      gstRate: batch.gstRate != null ? String(batch.gstRate) : '',
+      remarks: batch.remarks || '',
+    });
+  };
+
+  const closeBatchEdit = () => {
+    setEditingBatch(null);
+    setBatchForm({});
+  };
+
+  const saveBatchEdit = async (e) => {
+    e.preventDefault();
+    if (!editingBatch) return;
+    setSavingBatch(true);
+    try {
+      const payload = {
+        batchId: editingBatch._id,
+        batchNo: batchForm.batchNo.trim(),
+        expiryDate: batchForm.expiryDate,
+        mfgDate: batchForm.mfgDate || undefined,
+        purchasePrice: Number(batchForm.purchasePrice),
+        mrp: Number(batchForm.mrp),
+        sellingPrice: batchForm.sellingPrice ? Number(batchForm.sellingPrice) : null,
+        supplier: batchForm.supplier.trim() || null,
+        purchaseInvoiceNo: batchForm.purchaseInvoiceNo.trim() || null,
+        gstRate: batchForm.gstRate ? Number(batchForm.gstRate) : undefined,
+        remarks: batchForm.remarks.trim() || null,
+      };
+      await medicineService.stock.updateBatch(payload);
+      await loadData();
+      closeBatchEdit();
+    } catch (err) {
+      console.error('Failed to update batch:', err);
+      alert(err.error || 'Failed to update batch');
+    } finally {
+      setSavingBatch(false);
+    }
+  };
 
   const loadMoreActivity = async () => {
     if (!activityPagination?.hasNextPage || loadingMore) return;
@@ -273,7 +330,19 @@ export default function MedicineDetailPanel({
                       <td>
                         <span className="capitalize">{batch.status || '—'}</span>
                       </td>
-                      <td className="text-gray-500">{formatDateTime(batch.createdAt)}</td>
+                      <td>
+                        <div className="flex items-center gap-2">
+                          <span className="text-gray-500 text-xs">{formatDateTime(batch.createdAt)}</span>
+                          <button
+                            type="button"
+                            onClick={() => openBatchEdit(batch)}
+                            className="text-primary-600 hover:text-primary-700"
+                            title="Edit batch"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -378,6 +447,109 @@ export default function MedicineDetailPanel({
           </div>
         )}
       </div>
+
+      {/* Batch Edit Modal */}
+      {editingBatch && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between px-4 py-3 border-b">
+              <h3 className="font-semibold text-gray-900">Edit Batch — {editingBatch.batchNo}</h3>
+              <button type="button" onClick={closeBatchEdit} className="text-gray-400 hover:text-gray-600">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <form onSubmit={saveBatchEdit} className="p-4 space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <Input
+                  label="Batch No"
+                  value={batchForm.batchNo}
+                  onChange={(e) => setBatchForm((p) => ({ ...p, batchNo: e.target.value }))}
+                  required
+                />
+                <Input
+                  label="Expiry (YYYY-MM)"
+                  value={batchForm.expiryDate}
+                  onChange={(e) => setBatchForm((p) => ({ ...p, expiryDate: e.target.value }))}
+                  required
+                  placeholder="2026-08"
+                />
+                <Input
+                  label="Mfg Date (YYYY-MM)"
+                  value={batchForm.mfgDate}
+                  onChange={(e) => setBatchForm((p) => ({ ...p, mfgDate: e.target.value }))}
+                  placeholder="2026-01"
+                />
+                <Input
+                  label="Purchase Price (₹)"
+                  type="number"
+                  value={batchForm.purchasePrice}
+                  onChange={(e) => setBatchForm((p) => ({ ...p, purchasePrice: e.target.value }))}
+                  required
+                  min="0"
+                  step="0.01"
+                />
+                <Input
+                  label="MRP (₹)"
+                  type="number"
+                  value={batchForm.mrp}
+                  onChange={(e) => setBatchForm((p) => ({ ...p, mrp: e.target.value }))}
+                  required
+                  min="0"
+                  step="0.01"
+                />
+                <Input
+                  label="Selling Price (₹)"
+                  type="number"
+                  value={batchForm.sellingPrice}
+                  onChange={(e) => setBatchForm((p) => ({ ...p, sellingPrice: e.target.value }))}
+                  placeholder="Leave empty for MRP"
+                  min="0"
+                  step="0.01"
+                />
+                <Input
+                  label="GST Rate (%)"
+                  type="number"
+                  value={batchForm.gstRate}
+                  onChange={(e) => setBatchForm((p) => ({ ...p, gstRate: e.target.value }))}
+                  min="0"
+                  max="28"
+                />
+                <Input
+                  label="Supplier"
+                  value={batchForm.supplier}
+                  onChange={(e) => setBatchForm((p) => ({ ...p, supplier: e.target.value }))}
+                />
+                <Input
+                  label="Invoice No"
+                  value={batchForm.purchaseInvoiceNo}
+                  onChange={(e) => setBatchForm((p) => ({ ...p, purchaseInvoiceNo: e.target.value }))}
+                />
+              </div>
+              <Input
+                label="Remarks"
+                value={batchForm.remarks}
+                onChange={(e) => setBatchForm((p) => ({ ...p, remarks: e.target.value }))}
+              />
+              <div className="flex justify-end gap-2 pt-2 border-t">
+                <button
+                  type="button"
+                  onClick={closeBatchEdit}
+                  className="px-4 py-2 text-sm text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingBatch}
+                  className="px-4 py-2 text-sm text-white bg-primary-600 rounded-lg hover:bg-primary-700 disabled:opacity-50"
+                >
+                  {savingBatch ? 'Saving…' : 'Save changes'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

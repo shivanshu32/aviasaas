@@ -96,6 +96,10 @@ export const medicineService = {
       return api.post('/medicine/addStock', data);
     },
 
+    updateBatch: async (data) => {
+      return api.put('/medicine/updateStockBatch', data);
+    },
+
     deduct: async (data) => {
       return api.post('/medicine/deductStock', data);
     },
