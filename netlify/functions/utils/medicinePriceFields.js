@@ -1,6 +1,19 @@
 /**
  * Normalize medicine documents for UI: expose mrp + display prices from catalog and/or batches.
  */
+function computeWeightedAverages(stockBatches) {
+  if (!stockBatches || stockBatches.length === 0) return {};
+  const totalQty = stockBatches.reduce((s, b) => s + (b.qty || 0), 0);
+  if (totalQty === 0) return {};
+  const weightedAvgMrp =
+    stockBatches.reduce((s, b) => s + (Number(b.mrp) || 0) * (b.qty || 0), 0) / totalQty;
+  const weightedAvgSellingPrice =
+    stockBatches.reduce((s, b) => s + (Number(b.sellingPrice) || 0) * (b.qty || 0), 0) / totalQty;
+  const weightedAvgPurchasePrice =
+    stockBatches.reduce((s, b) => s + (Number(b.purchasePrice) || 0) * (b.qty || 0), 0) / totalQty;
+  return { weightedAvgMrp, weightedAvgSellingPrice, weightedAvgPurchasePrice };
+}
+
 export function enrichMedicineWithPrices(doc) {
   if (!doc) return doc;
 
@@ -23,11 +36,14 @@ export function enrichMedicineWithPrices(doc) {
   const displaySellingPrice = batchSelling ?? batchMrp ?? catalogSelling ?? null;
   const mrp = batchMrp ?? batchSelling ?? catalogSelling ?? null;
 
+  const weighted = computeWeightedAverages(doc.stockBatches);
+
   return {
     ...doc,
     displayPurchasePrice,
     displaySellingPrice,
     mrp,
+    ...weighted,
   };
 }
 
@@ -55,26 +71,4 @@ export const STOCK_PRICE_GROUP_FIELDS = {
   batchPurchasePrice: { $max: '$purchasePrice' },
   batchMinPurchasePrice: { $min: '$purchasePrice' },
   nearestExpiry: { $min: '$expiryDate' },
-  // weighted averages across batches by currentQty (null if no stock)
-  weightedAvgMrp: {
-    $cond: [
-      { $eq: [{ $sum: '$currentQty' }, 0] },
-      null,
-      { $divide: [{ $sum: { $multiply: ['$mrp', '$currentQty'] } }, { $sum: '$currentQty' }] },
-    ],
-  },
-  weightedAvgSellingPrice: {
-    $cond: [
-      { $eq: [{ $sum: '$currentQty' }, 0] },
-      null,
-      { $divide: [{ $sum: { $multiply: ['$sellingPrice', '$currentQty'] } }, { $sum: '$currentQty' }] },
-    ],
-  },
-  weightedAvgPurchasePrice: {
-    $cond: [
-      { $eq: [{ $sum: '$currentQty' }, 0] },
-      null,
-      { $divide: [{ $sum: { $multiply: ['$purchasePrice', '$currentQty'] } }, { $sum: '$currentQty' }] },
-    ],
-  },
 };
