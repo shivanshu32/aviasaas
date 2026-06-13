@@ -28,7 +28,7 @@ import {
   endOfExpiryMonth,
   startOfMfgMonth,
   isExpiryMonthPast,
-} from '../shared/utils/monthYearDate.js';
+} from '../../shared/utils/monthYearDate.js';
 
 async function updateStockBatch(event) {
   if (event.httpMethod !== 'PUT') {
