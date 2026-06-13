@@ -69,7 +69,7 @@ async function updateStockBatch(event) {
   };
 
   // If changing batchNo, check for conflict with another batch of same medicine
-  if (data.batchNo !== undefined && data.batchNo !== batch.batchNo) {
+  if (data.batchNo != null && data.batchNo !== batch.batchNo) {
     const existing = await db.collection(COLLECTIONS.MEDICINE_STOCK_BATCHES).findOne({
       medicineId: batch.medicineId,
       batchNo: data.batchNo,
@@ -136,15 +136,15 @@ async function updateStockBatch(event) {
     updateFields.gstRate = n;
   }
 
-  if (data.supplier !== undefined) {
+  if (data.supplier != null) {
     updateFields.supplier = data.supplier.trim() || null;
   }
 
-  if (data.purchaseInvoiceNo !== undefined) {
+  if (data.purchaseInvoiceNo != null) {
     updateFields.purchaseInvoiceNo = data.purchaseInvoiceNo.trim() || null;
   }
 
-  if (data.remarks !== undefined) {
+  if (data.remarks != null) {
     updateFields.remarks = data.remarks.trim() || null;
   }
 
