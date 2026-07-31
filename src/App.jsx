@@ -13,6 +13,7 @@ import Inventory from './pages/Inventory';
 import Settings from './pages/Settings';
 import ServiceItems from './pages/ServiceItems';
 import Users from './pages/Users';
+import PatientReports from './pages/PatientReports';
 import NotFound from './pages/NotFound';
 
 // Sub Pages
@@ -58,6 +59,7 @@ function App() {
         <Route path="prescriptions/generate" element={<PrescriptionGenerator />} />
         <Route path="prescriptions/blank" element={<BlankPrescription />} />
         <Route path="letterhead" element={<Letterhead />} />
+        <Route path="patient-reports" element={<PatientReports />} />
         
         {/* Billing */}
         <Route path="billing" element={<Billing />} />

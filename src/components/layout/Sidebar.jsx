@@ -19,6 +19,7 @@ const navItems = [
   { path: '/patients', icon: Users, label: 'Patients' },
   { path: '/doctors', icon: UserCog, label: 'Doctors' },
   { path: '/appointments', icon: Calendar, label: 'Appointments' },
+  { path: '/patient-reports', icon: FileText, label: 'Patient Reports' },
   { path: '/billing', icon: Receipt, label: 'Billing' },
   { path: '/inventory', icon: Package, label: 'Pharmacy' },
   { path: '/services', icon: FlaskConical, label: 'Service Charges' },
