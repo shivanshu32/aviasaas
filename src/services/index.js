@@ -4,6 +4,7 @@ export { default as patientService } from './patientService';
 export { default as doctorService } from './doctorService';
 export { default as appointmentService } from './appointmentService';
 export { default as prescriptionService } from './prescriptionService';
+export { default as patientReportService } from './patientReportService';
 export { default as billingService } from './billingService';
 export { default as medicineService } from './medicineService';
 export { default as clinicService } from './clinicService';

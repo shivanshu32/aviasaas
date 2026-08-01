@@ -2,12 +2,18 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { 
   ArrowLeft, Edit, Phone, Mail, MapPin, AlertCircle, Loader2,
-  Calendar, FileText, Receipt, Pill, Plus, Eye, User,
+  Calendar, FileCheck2, FileText, Receipt, Pill, Plus, Eye, User,
   Droplets, Heart, AlertTriangle, Printer, FlaskConical
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { Button, Card, Badge } from '../../components/ui';
-import { patientService, appointmentService, billingService, prescriptionService } from '../../services';
+import {
+  patientService,
+  appointmentService,
+  billingService,
+  prescriptionService,
+  patientReportService,
+} from '../../services';
 
 export default function ViewPatient() {
   const { id } = useParams();
@@ -24,6 +30,7 @@ export default function ViewPatient() {
   const [miscBills, setMiscBills] = useState([]);
   const [medicineBills, setMedicineBills] = useState([]);
   const [prescriptions, setPrescriptions] = useState([]);
+  const [reports, setReports] = useState([]);
   const [dataLoading, setDataLoading] = useState(false);
 
   useEffect(() => {
@@ -85,6 +92,9 @@ export default function ViewPatient() {
         } else if (activeTab === 'prescriptions' && prescriptions.length === 0) {
           const res = await prescriptionService.getAll({ patientId: patient._id });
           setPrescriptions(res.prescriptions || []);
+        } else if (activeTab === 'reports' && reports.length === 0) {
+          const res = await patientReportService.getAll({ patientId: patient._id, limit: 100 });
+          setReports(res.reports || []);
         }
       } catch (err) {
         console.error('Failed to fetch related data:', err);
@@ -164,6 +174,7 @@ export default function ViewPatient() {
     { id: 'appointments', label: 'Appointments', icon: Calendar },
     { id: 'bills', label: 'Bills', icon: Receipt },
     { id: 'prescriptions', label: 'Prescriptions', icon: FileText },
+    { id: 'reports', label: 'Reports', icon: FileCheck2 },
   ];
 
   return (
@@ -658,6 +669,65 @@ export default function ViewPatient() {
                             <button className="text-primary-600 hover:text-primary-700">
                               <Eye className="w-4 h-4" />
                             </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </Card>
+          )}
+
+          {activeTab === 'reports' && (
+            <Card>
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="font-semibold text-gray-900">Patient Reports</h3>
+                  <p className="text-xs text-gray-500 mt-0.5">Medical reports generated for this patient</p>
+                </div>
+                <Link to={`/patient-reports?patientId=${patient._id}`}>
+                  <Button size="sm" icon={Plus}>New Report</Button>
+                </Link>
+              </div>
+
+              {dataLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="w-6 h-6 animate-spin text-primary-600" />
+                </div>
+              ) : reports.length === 0 ? (
+                <div className="text-center py-12 text-gray-500">
+                  <FileCheck2 className="w-16 h-16 mx-auto mb-4 text-gray-200" />
+                  <p className="text-lg font-medium text-gray-400">No patient reports found</p>
+                  <p className="text-sm text-gray-400 mt-1">Create a report to add it to this patient's history</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b bg-gray-50">
+                        <th className="text-left py-3 px-3 font-medium text-gray-600">Report ID</th>
+                        <th className="text-left py-3 px-3 font-medium text-gray-600">Date</th>
+                        <th className="text-left py-3 px-3 font-medium text-gray-600">Report</th>
+                        <th className="text-left py-3 px-3 font-medium text-gray-600">Doctor</th>
+                        <th className="text-left py-3 px-3 font-medium text-gray-600">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {reports.map((patientReport) => (
+                        <tr key={patientReport._id} className="border-b last:border-0 hover:bg-gray-50">
+                          <td className="py-3 px-3 font-medium text-primary-600">{patientReport.reportId}</td>
+                          <td className="py-3 px-3">{formatDate(patientReport.reportDate || patientReport.createdAt)}</td>
+                          <td className="py-3 px-3 max-w-[220px] truncate">{patientReport.title || 'Patient Medical Report'}</td>
+                          <td className="py-3 px-3">{patientReport.doctorName || patientReport.doctor?.name || '-'}</td>
+                          <td className="py-3 px-3">
+                            <Link
+                              to={`/patient-reports?reportId=${patientReport._id}`}
+                              className="inline-flex p-1.5 text-primary-600 hover:bg-primary-50 rounded"
+                              title="View and print report"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </Link>
                           </td>
                         </tr>
                       ))}

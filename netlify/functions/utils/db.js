@@ -444,6 +444,7 @@ export const COLLECTIONS = {
   DOCTORS: 'doctors',
   APPOINTMENTS: 'appointments',
   OPD_PRESCRIPTIONS: 'opd_prescriptions',
+  PATIENT_REPORTS: 'patient_reports',
   OPD_BILLS: 'opd_bills',
   MISC_BILLS: 'misc_bills',
   MEDICINES: 'medicines',

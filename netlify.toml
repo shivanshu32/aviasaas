@@ -55,6 +55,11 @@
   status = 200
 
 [[redirects]]
+  from = "/api/reports/*"
+  to = "/.netlify/functions/reports-:splat"
+  status = 200
+
+[[redirects]]
   from = "/api/billing/opd/*"
   to = "/.netlify/functions/billing-opd-:splat"
   status = 200
