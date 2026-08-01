@@ -28,6 +28,16 @@ const toolbarButtons = [
   { command: 'redo', label: 'Redo', icon: Redo2 },
 ];
 
+const fontSizeOptions = [
+  { value: '1', label: '10 px' },
+  { value: '2', label: '12 px' },
+  { value: '3', label: '14 px' },
+  { value: '4', label: '16 px' },
+  { value: '5', label: '18 px' },
+  { value: '6', label: '24 px' },
+  { value: '7', label: '32 px' },
+];
+
 export default function RichTextEditor({ value, onChange }) {
   const editorRef = useRef(null);
   const selectionRef = useRef(null);
@@ -64,16 +74,29 @@ export default function RichTextEditor({ value, onChange }) {
     <div className="overflow-hidden rounded-xl border border-gray-200 bg-white focus-within:border-primary-400 focus-within:ring-2 focus-within:ring-primary-100">
       <div className="flex flex-wrap items-center gap-1 border-b border-gray-200 bg-gray-50 px-3 py-2">
         <select
-          aria-label="Text style"
+          aria-label="Paragraph style"
           className="mr-1 h-8 rounded-md border border-gray-200 bg-white px-2 text-xs text-gray-700 outline-none hover:bg-gray-50"
           defaultValue="p"
           onMouseDown={saveSelection}
           onChange={(event) => applyCommand('formatBlock', event.target.value)}
         >
-          <option value="p">Normal</option>
-          <option value="h2">Heading</option>
-          <option value="h3">Subheading</option>
+          <option value="p">Paragraph</option>
+          <option value="h2">Heading 1</option>
+          <option value="h3">Heading 2</option>
           <option value="blockquote">Quote</option>
+        </select>
+
+        <select
+          aria-label="Font size"
+          title="Font size"
+          className="mr-1 h-8 w-[78px] rounded-md border border-gray-200 bg-white px-2 text-xs text-gray-700 outline-none hover:bg-gray-50"
+          defaultValue="3"
+          onMouseDown={saveSelection}
+          onChange={(event) => applyCommand('fontSize', event.target.value)}
+        >
+          {fontSizeOptions.map((option) => (
+            <option key={option.value} value={option.value}>{option.label}</option>
+          ))}
         </select>
 
         {toolbarButtons.map((button, index) => {
