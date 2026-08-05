@@ -4,6 +4,7 @@ import {
   AlignLeft,
   AlignRight,
   Bold,
+  Image,
   Italic,
   List,
   ListOrdered,
@@ -24,6 +25,8 @@ const toolbarButtons = [
   { command: 'insertUnorderedList', label: 'Bulleted list', icon: List },
   { command: 'insertOrderedList', label: 'Numbered list', icon: ListOrdered },
   { divider: true },
+  { command: 'insertImage', label: 'Insert image/signature', icon: Image, isCustom: true },
+  { divider: true },
   { command: 'undo', label: 'Undo', icon: Undo2 },
   { command: 'redo', label: 'Redo', icon: Redo2 },
 ];
@@ -41,6 +44,7 @@ const fontSizeOptions = [
 export default function RichTextEditor({ value, onChange }) {
   const editorRef = useRef(null);
   const selectionRef = useRef(null);
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
     if (editorRef.current && editorRef.current.innerHTML !== value) {
@@ -68,6 +72,71 @@ export default function RichTextEditor({ value, onChange }) {
     document.execCommand(command, false, commandValue);
     onChange(editorRef.current?.innerHTML || '');
     saveSelection();
+  };
+
+  const insertImage = (file) => {
+    if (!file || !file.type.startsWith('image/')) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = document.createElement('img');
+      img.src = e.target.result;
+      img.style.maxWidth = '100%';
+      img.style.height = 'auto';
+      img.alt = 'Inserted image';
+
+      editorRef.current?.focus();
+      
+      const selection = window.getSelection();
+      if (!selection.rangeCount) {
+        editorRef.current?.appendChild(img);
+      } else {
+        const range = selection.getRangeAt(0);
+        range.deleteContents();
+        range.insertNode(img);
+
+        range.setStartAfter(img);
+        range.setEndAfter(img);
+        selection.removeAllRanges();
+        selection.addRange(range);
+      }
+
+      onChange(editorRef.current?.innerHTML || '');
+      saveSelection();
+    };
+
+    reader.readAsDataURL(file);
+  };
+
+  const handleImageUpload = () => {
+    saveSelection();
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (event) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      insertImage(file);
+      event.target.value = '';
+    }
+  };
+
+  const handlePaste = (event) => {
+    const clipboardData = event.clipboardData || window.clipboardData;
+    const items = clipboardData?.items;
+
+    if (!items) return;
+
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+
+      if (item.type.indexOf('image') !== -1) {
+        event.preventDefault();
+        const blob = item.getAsFile();
+        insertImage(blob);
+        break;
+      }
+    }
   };
 
   return (
@@ -113,7 +182,11 @@ export default function RichTextEditor({ value, onChange }) {
               aria-label={button.label}
               onMouseDown={(event) => {
                 event.preventDefault();
-                applyCommand(button.command);
+                if (button.isCustom && button.command === 'insertImage') {
+                  handleImageUpload();
+                } else {
+                  applyCommand(button.command);
+                }
               }}
               className="flex h-8 w-8 items-center justify-center rounded-md text-gray-600 transition-colors hover:bg-white hover:text-primary-700 hover:shadow-sm"
             >
@@ -135,11 +208,21 @@ export default function RichTextEditor({ value, onChange }) {
         onInput={(event) => onChange(event.currentTarget.innerHTML)}
         onKeyUp={saveSelection}
         onMouseUp={saveSelection}
+        onPaste={handlePaste}
       />
 
       <div className="border-t border-gray-100 bg-gray-50 px-4 py-2 text-right text-xs text-gray-400">
         Rich text editor • Formatting is preserved in the printed report
       </div>
+
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        onChange={handleFileChange}
+        className="hidden"
+        aria-hidden="true"
+      />
     </div>
   );
 }
