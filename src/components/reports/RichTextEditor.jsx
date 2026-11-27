@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   AlignCenter,
   AlignLeft,
@@ -71,9 +71,15 @@ function cleanPastedHtml(html) {
 }
 
 export default function RichTextEditor({ value, onChange }) {
+  const editorFrameRef = useRef(null);
   const editorRef = useRef(null);
   const selectionRef = useRef(null);
   const fileInputRef = useRef(null);
+  const activeImageRef = useRef(null);
+  const [signatureWidth, setSignatureWidth] = useState('180');
+  const [hasSelectedImage, setHasSelectedImage] = useState(false);
+  const [imageFrame, setImageFrame] = useState(null);
+  const resizeStartRef = useRef(null);
 
   useEffect(() => {
     if (editorRef.current && editorRef.current.innerHTML !== value) {
@@ -183,8 +189,80 @@ export default function RichTextEditor({ value, onChange }) {
     saveSelection();
   };
 
+  const selectReportImage = (event) => {
+    const image = event.target.closest('img');
+    activeImageRef.current = image && editorRef.current?.contains(image) ? image : null;
+    setHasSelectedImage(Boolean(activeImageRef.current));
+    if (!activeImageRef.current) {
+      setImageFrame(null);
+      return;
+    }
+
+    const currentWidth = Number.parseInt(activeImageRef.current.style.width, 10)
+      || Number.parseInt(activeImageRef.current.getAttribute('width'), 10)
+      || 180;
+    setSignatureWidth(String(Math.min(currentWidth, 180)));
+    updateImageFrame(activeImageRef.current);
+  };
+
+  const updateImageFrame = (image) => {
+    if (!image || !editorFrameRef.current) return;
+    const imageRect = image.getBoundingClientRect();
+    const frameRect = editorFrameRef.current.getBoundingClientRect();
+    setImageFrame({
+      left: imageRect.left - frameRect.left,
+      top: imageRect.top - frameRect.top,
+      width: imageRect.width,
+      height: imageRect.height,
+    });
+  };
+
+  const resizeReportImage = (event) => {
+    const image = activeImageRef.current;
+    if (!image) return;
+
+    const width = Number(event.target.value);
+    image.style.width = `${width}px`;
+    image.style.height = 'auto';
+    image.style.maxWidth = '180px';
+    image.style.maxHeight = '90px';
+    setSignatureWidth(String(width));
+    onChange(editorRef.current?.innerHTML || '');
+    updateImageFrame(image);
+  };
+
+  const startCornerResize = (event) => {
+    const image = activeImageRef.current;
+    if (!image) return;
+    event.preventDefault();
+    event.stopPropagation();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    resizeStartRef.current = {
+      pointerX: event.clientX,
+      width: image.getBoundingClientRect().width,
+    };
+  };
+
+  const moveCornerResize = (event) => {
+    if (!resizeStartRef.current || !activeImageRef.current) return;
+    const width = Math.max(20, Math.min(180,
+      Math.round(resizeStartRef.current.width + event.clientX - resizeStartRef.current.pointerX)));
+    const image = activeImageRef.current;
+    image.style.width = `${width}px`;
+    image.style.height = 'auto';
+    image.style.maxWidth = '180px';
+    image.style.maxHeight = '90px';
+    setSignatureWidth(String(width));
+    onChange(editorRef.current?.innerHTML || '');
+    updateImageFrame(image);
+  };
+
+  const stopCornerResize = () => {
+    resizeStartRef.current = null;
+  };
+
   return (
-    <div className="overflow-hidden rounded-xl border border-gray-200 bg-white focus-within:border-primary-400 focus-within:ring-2 focus-within:ring-primary-100">
+    <div ref={editorFrameRef} className="relative overflow-hidden rounded-xl border border-gray-200 bg-white focus-within:border-primary-400 focus-within:ring-2 focus-within:ring-primary-100">
       <div className="flex flex-wrap items-center gap-1 border-b border-gray-200 bg-gray-50 px-3 py-2">
         <select
           aria-label="Paragraph style"
@@ -198,6 +276,22 @@ export default function RichTextEditor({ value, onChange }) {
           <option value="h3">Heading 2</option>
           <option value="blockquote">Quote</option>
         </select>
+
+        <label className="flex items-center gap-2 text-xs text-gray-600" title="Click a signature or image in the report, then drag to resize it">
+          Signature size
+          <input
+            type="range"
+            aria-label="Selected signature size"
+            className="w-24 accent-teal-700 disabled:opacity-40"
+            min="20"
+            max="180"
+            step="1"
+            value={signatureWidth}
+            disabled={!hasSelectedImage}
+            onChange={resizeReportImage}
+          />
+          <span className="w-10 text-right tabular-nums">{signatureWidth}px</span>
+        </label>
 
         <select
           aria-label="Font size"
@@ -253,10 +347,34 @@ export default function RichTextEditor({ value, onChange }) {
         onKeyUp={saveSelection}
         onMouseUp={saveSelection}
         onPaste={handlePaste}
+        onClick={selectReportImage}
       />
 
+      {imageFrame && hasSelectedImage && (
+        <div
+          className="pointer-events-none absolute z-10 border border-dashed border-teal-700"
+          style={{
+            left: imageFrame.left,
+            top: imageFrame.top,
+            width: imageFrame.width,
+            height: imageFrame.height,
+          }}
+        >
+          <button
+            type="button"
+            aria-label="Resize selected signature from the corner"
+            title="Drag to resize"
+            className="pointer-events-auto absolute -bottom-2 -right-2 h-4 w-4 touch-none rounded-full border-2 border-teal-700 bg-white shadow"
+            onPointerDown={startCornerResize}
+            onPointerMove={moveCornerResize}
+            onPointerUp={stopCornerResize}
+            onPointerCancel={stopCornerResize}
+          />
+        </div>
+      )}
+
       <div className="border-t border-gray-100 bg-gray-50 px-4 py-2 text-right text-xs text-gray-400">
-        Rich text editor • Formatting is preserved in the printed report
+        Click a signature/image, then drag its lower-right handle or use Signature size. Pasted text prints in black.
       </div>
 
       <input
