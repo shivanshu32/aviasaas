@@ -6,6 +6,7 @@ import toast from 'react-hot-toast';
 import { Button, Input, Select } from '../../components/ui';
 import { billingService, patientService, doctorService, appointmentService } from '../../services';
 import BillPrintView from './BillPrintView';
+import { getLocalDateInputString } from '../../../shared/utils/billDate';
 
 const PAYMENT_MODES = [
   { value: 'cash', label: 'Cash' },
@@ -53,7 +54,7 @@ export default function OpdBillGenerator() {
       upiRef: '',
     },
     remarks: '',
-    billDate: new Date().toISOString().split('T')[0],
+    billDate: getLocalDateInputString(),
   });
 
   useEffect(() => {
@@ -422,7 +423,6 @@ export default function OpdBillGenerator() {
                 name="billDate"
                 value={formData.billDate}
                 onChange={handleChange}
-                max={new Date().toISOString().split('T')[0]}
                 className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
               />
             </div>
