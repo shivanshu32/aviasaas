@@ -76,6 +76,7 @@ export default function RichTextEditor({ value, onChange }) {
   const selectionRef = useRef(null);
   const fileInputRef = useRef(null);
   const activeImageRef = useRef(null);
+  const draggingImageRef = useRef(null);
   const [signatureWidth, setSignatureWidth] = useState('180');
   const [hasSelectedImage, setHasSelectedImage] = useState(false);
   const [imageFrame, setImageFrame] = useState(null);
@@ -261,6 +262,45 @@ export default function RichTextEditor({ value, onChange }) {
     resizeStartRef.current = null;
   };
 
+  const startImageDrag = (event) => {
+    const image = event.target.closest('img');
+    if (!image || !editorRef.current?.contains(image)) return;
+    draggingImageRef.current = image;
+    activeImageRef.current = image;
+    setHasSelectedImage(true);
+    updateImageFrame(image);
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData('text/plain', 'report-signature');
+  };
+
+  const dropImageAtPoint = (event) => {
+    const image = draggingImageRef.current;
+    if (!image || !editorRef.current) return;
+
+    event.preventDefault();
+    let range = document.caretRangeFromPoint?.(event.clientX, event.clientY);
+    if (!range && document.caretPositionFromPoint) {
+      const position = document.caretPositionFromPoint(event.clientX, event.clientY);
+      if (position) {
+        range = document.createRange();
+        range.setStart(position.offsetNode, position.offset);
+        range.collapse(true);
+      }
+    }
+    if (!range || !editorRef.current.contains(range.startContainer)) return;
+
+    range.insertNode(image);
+    range.setStartAfter(image);
+    range.collapse(true);
+    const selection = window.getSelection();
+    selection.removeAllRanges();
+    selection.addRange(range);
+    draggingImageRef.current = null;
+    onChange(editorRef.current.innerHTML);
+    saveSelection();
+    updateImageFrame(image);
+  };
+
   return (
     <div ref={editorFrameRef} className="relative overflow-hidden rounded-xl border border-gray-200 bg-white focus-within:border-primary-400 focus-within:ring-2 focus-within:ring-primary-100">
       <div className="flex flex-wrap items-center gap-1 border-b border-gray-200 bg-gray-50 px-3 py-2">
@@ -348,6 +388,12 @@ export default function RichTextEditor({ value, onChange }) {
         onMouseUp={saveSelection}
         onPaste={handlePaste}
         onClick={selectReportImage}
+        onDragStart={startImageDrag}
+        onDragOver={(event) => {
+          if (draggingImageRef.current) event.preventDefault();
+        }}
+        onDrop={dropImageAtPoint}
+        onDragEnd={() => { draggingImageRef.current = null; }}
       />
 
       {imageFrame && hasSelectedImage && (
@@ -374,7 +420,7 @@ export default function RichTextEditor({ value, onChange }) {
       )}
 
       <div className="border-t border-gray-100 bg-gray-50 px-4 py-2 text-right text-xs text-gray-400">
-        Click a signature/image, then drag its lower-right handle or use Signature size. Pasted text prints in black.
+        Drag a signature/image to move it; drag its lower-right handle to resize it. Pasted text prints in black.
       </div>
 
       <input
