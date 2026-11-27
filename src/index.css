@@ -198,16 +198,29 @@
   pointer-events: none;
 }
 
+.report-editor,
+.report-editor * {
+  color: #000 !important;
+}
+
+.report-editor img {
+  max-width: 180px !important;
+  max-height: 90px !important;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+}
+
 .report-editor h2 {
   margin: 0.75rem 0 0.25rem;
-  color: #1e3a8a;
+  color: #000;
   font-size: 1.125rem;
   font-weight: 700;
 }
 
 .report-editor h3 {
   margin: 0.65rem 0 0.2rem;
-  color: #334155;
+  color: #000;
   font-size: 1rem;
   font-weight: 700;
 }
@@ -226,7 +239,7 @@
   margin: 0.75rem 0;
   border-left: 3px solid #93c5fd;
   padding-left: 0.875rem;
-  color: #64748b;
+  color: #000;
 }
 
 .report-editor font[size='1'] { font-size: 10px; }

@@ -41,6 +41,35 @@ const fontSizeOptions = [
   { value: '7', label: '32 px' },
 ];
 
+const SIGNATURE_IMAGE_STYLE = 'max-width: 180px; max-height: 90px; width: auto; height: auto; object-fit: contain;';
+
+function cleanPastedHtml(html) {
+  const parsed = new DOMParser().parseFromString(html, 'text/html');
+
+  parsed.body.querySelectorAll('*').forEach((element) => {
+    // Keep useful emphasis and layout, while removing pasted colors, backgrounds,
+    // font sizes, and other source-document styling.
+    element.removeAttribute('color');
+    element.removeAttribute('bgcolor');
+    if (element.tagName === 'FONT') element.removeAttribute('size');
+    if (element.hasAttribute('style')) {
+      const safeStyles = element.getAttribute('style').split(';').filter((declaration) => {
+        const property = declaration.split(':', 1)[0]?.trim().toLowerCase();
+        return property && !['color', 'background', 'background-color', 'font-size', 'font-family'].includes(property);
+      });
+      if (safeStyles.length) element.setAttribute('style', safeStyles.join(';'));
+      else element.removeAttribute('style');
+    }
+
+    if (element.tagName === 'IMG') {
+      element.setAttribute('style', SIGNATURE_IMAGE_STYLE);
+      element.setAttribute('alt', element.getAttribute('alt') || 'Report image or signature');
+    }
+  });
+
+  return parsed.body.innerHTML;
+}
+
 export default function RichTextEditor({ value, onChange }) {
   const editorRef = useRef(null);
   const selectionRef = useRef(null);
@@ -81,8 +110,7 @@ export default function RichTextEditor({ value, onChange }) {
     reader.onload = (e) => {
       const img = document.createElement('img');
       img.src = e.target.result;
-      img.style.maxWidth = '100%';
-      img.style.height = 'auto';
+      img.style.cssText = SIGNATURE_IMAGE_STYLE;
       img.alt = 'Inserted image';
 
       editorRef.current?.focus();
@@ -125,18 +153,34 @@ export default function RichTextEditor({ value, onChange }) {
     const clipboardData = event.clipboardData || window.clipboardData;
     const items = clipboardData?.items;
 
-    if (!items) return;
+    if (!clipboardData) return;
 
-    for (let i = 0; i < items.length; i++) {
-      const item = items[i];
+    if (items) {
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
 
-      if (item.type.indexOf('image') !== -1) {
-        event.preventDefault();
-        const blob = item.getAsFile();
-        insertImage(blob);
-        break;
+        if (item.type.indexOf('image') !== -1) {
+          event.preventDefault();
+          const blob = item.getAsFile();
+          insertImage(blob);
+          return;
+        }
       }
     }
+
+    const html = clipboardData.getData('text/html');
+    if (!html) return;
+
+    event.preventDefault();
+    editorRef.current?.focus();
+    if (selectionRef.current) {
+      const selection = window.getSelection();
+      selection.removeAllRanges();
+      selection.addRange(selectionRef.current);
+    }
+    document.execCommand('insertHTML', false, cleanPastedHtml(html));
+    onChange(editorRef.current?.innerHTML || '');
+    saveSelection();
   };
 
   return (

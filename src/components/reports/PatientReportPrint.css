@@ -128,26 +128,40 @@
 .report-rich-content {
   flex: 1;
   min-height: 74mm;
+  color: #000;
   font-size: 10.5pt;
   line-height: 1.65;
 }
 
+.report-rich-content,
+.report-rich-content * {
+  color: #000 !important;
+}
+
+.report-rich-content img {
+  max-width: 180px !important;
+  max-height: 90px !important;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+}
+
 .report-rich-content h2 {
   margin: 20px 0 7px;
-  color: #1e3a8a;
+  color: #000;
   font-size: 13pt;
 }
 
 .report-rich-content h3 {
   margin: 16px 0 5px;
-  color: #334155;
+  color: #000;
   font-size: 11.5pt;
 }
 
 .report-rich-content p { margin: 7px 0; }
 .report-rich-content ul,
 .report-rich-content ol { margin: 7px 0; padding-left: 24px; }
-.report-rich-content blockquote { margin: 12px 0; border-left: 3px solid #93c5fd; padding: 8px 14px; color: #475569; }
+.report-rich-content blockquote { margin: 12px 0; border-left: 3px solid #000; padding: 8px 14px; color: #000; }
 .report-rich-content font[size='1'] { font-size: 7.5pt; }
 .report-rich-content font[size='2'] { font-size: 9pt; }
 .report-rich-content font[size='3'] { font-size: 10.5pt; }
